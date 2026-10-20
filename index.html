@@ -688,7 +688,20 @@ async function renderReport(m){
 /* ---------- настройки ---------- */
 async function renderAdmin(m){
   let users;
-  try { [users, BOOT] = await Promise.all([api("pay_admin", {p_action:"users"}), api("pay_bootstrap")]); } catch(e) { m.innerHTML = `<div class="box empty">${esc(e.message)}</div>`; return; }
+  try { [users, BOOT] = await Promise.all([api("pay_admin_users"), api("pay_bootstrap")]); } catch(e) { m.innerHTML = `<div class="box empty">${esc(e.message)}</div>`; return; }
+  const active = users.filter(u => u.is_active), inactive = users.filter(u => !u.is_active);
+  const pwState = u => !u.has_password ? `<span class="pw-state none">не задан</span>` : u.must_change ? `<span class="pw-state temp">временный</span>` : `<span class="pw-state ok">свой</span>`;
+  const canRemove = u => !u.in_use && !u.in_route && u.id !== BOOT.me.id;
+  const removeTitle = u => u.id === BOOT.me.id ? "Себя удалить нельзя" : u.in_route ? "Стоит в маршруте согласования" : u.in_use ? "Есть заявки или действия в истории: можно только отключить" : "Удалить из системы";
+  const userRow = u => `<tr data-u="${u.id}">
+      <td><input type="checkbox" class="u-pick" value="${u.id}" ${canRemove(u)?"":"disabled"} title="${removeTitle(u)}" aria-label="Выбрать ${esc(u.name)}"></td>
+      <td><input class="inp" data-f="name" value="${esc(u.name)}"></td>
+      <td><input class="inp" data-f="login" type="email" value="${esc(u.login||"")}" placeholder="укажите email"></td>
+      <td style="text-align:center"><input type="checkbox" data-f="is_admin" ${u.is_admin?"checked":""}></td>
+      <td>${pwState(u)}</td>
+      <td><div class="pw-set"><input class="inp" data-pw="${u.id}" type="text" autocomplete="off" placeholder="от 8 символов"><button class="btn" data-pwset="${u.id}">Задать</button></div></td>
+      <td class="t-sub">${u.last_seen?dshort(u.last_seen):"—"}</td>
+      <td><div class="pw-set"><button class="btn" data-usave="${u.id}">Сохранить</button>${u.id !== BOOT.me.id ? `<button class="btn ghost" data-off="${u.id}">Отключить</button>` : ""}</div></td></tr>`;
   const userOpts = sel => `<option value="">Не назначен</option>` + users.filter(u => u.is_active).map(u => `<option value="${u.id}" ${u.id===sel?"selected":""}>${esc(u.name)}</option>`).join("");
   m.innerHTML = `
     <div class="view-head"><div><h2>Настройки</h2><p>Маршрут согласования, статьи расходов и доступ сотрудников.</p></div></div>
@@ -701,14 +714,18 @@ async function renderAdmin(m){
             ${g.articles.map(a => `<div class="art-row ${a.is_active?"":"off"}"><input class="inp" data-a="${a.id}" data-gid="${g.id}" value="${esc(a.name)}"><input class="inp" data-ah="${a.id}" value="${esc(a.hint||"")}" placeholder="Подсказка"><button class="btn ghost" data-toggle="${a.id}" data-on="${a.is_active}">${a.is_active?"Выключить":"Включить"}</button></div>`).join("")}
             <div class="art-row"><input class="inp" data-new="${g.id}" placeholder="+ Новая статья в группе «${esc(g.name)}»"><button class="btn" data-add="${g.id}">Добавить</button></div>
           </div>`).join("")}</div></section>
-      <section class="box"><h3>Сотрудники и пароли</h3><p class="hint">Чтобы сотрудник вошёл впервые, задайте ему временный пароль (от 8 символов) и передайте лично. При первом входе система попросит придумать свой. Если сотрудник забыл пароль, задайте новый временный.</p>
-        <div style="overflow-x:auto"><table class="users-tbl"><thead><tr><th>Имя</th><th>Email для входа</th><th>Админ</th><th>Доступ</th><th>Пароль</th><th>Временный пароль</th><th>Был(а)</th><th></th></tr></thead><tbody>
-          <tr data-u="new"><td><input class="inp" data-f="name" placeholder="Имя Фамилия"></td><td><input class="inp" data-f="login" type="email" placeholder="email"></td><td><input type="checkbox" data-f="is_admin"></td><td><input type="checkbox" data-f="is_active" checked disabled></td><td></td><td></td><td></td><td><button class="btn primary" data-usave="new">Добавить</button></td></tr>
-          ${users.map(u => `<tr data-u="${u.id}"><td><input class="inp" data-f="name" value="${esc(u.name)}"></td><td><input class="inp" data-f="login" type="email" value="${esc(u.login||"")}" placeholder="нет email — вход невозможен"></td><td><input type="checkbox" data-f="is_admin" ${u.is_admin?"checked":""}></td><td><input type="checkbox" data-f="is_active" ${u.is_active?"checked":""}></td>
-            <td>${!u.has_password ? `<span class="pw-state none">не задан</span>` : u.must_change ? `<span class="pw-state temp">временный</span>` : `<span class="pw-state ok">свой</span>`}</td>
-            <td><div class="pw-set"><input class="inp" data-pw="${u.id}" type="text" autocomplete="off" placeholder="от 8 символов"><button class="btn" data-pwset="${u.id}">Задать</button></div></td>
-            <td class="t-sub">${u.last_seen?dshort(u.last_seen):"—"}</td><td><button class="btn" data-usave="${u.id}">Сохранить</button></td></tr>`).join("")}
-        </tbody></table></div></section>
+      <section class="box" id="usersBox"><h3>Сотрудники и пароли</h3>
+        <p class="hint">Изменить имя или email: исправьте в строке и нажмите «Сохранить». Новый email сразу станет логином, пароль не меняется.<br>
+        Первый вход: задайте временный пароль (от 8 символов) и передайте лично, при входе сотрудник заменит его на свой. Забытый пароль: задайте новый временный.<br>
+        Лишних отметьте галочкой слева и нажмите «Удалить выбранных». Тех, у кого уже есть заявки, удалить нельзя, только отключить: иначе пропадёт история платежей.</p>
+        <div class="toolbar" style="margin:10px 0"><input class="inp" id="u_q" type="search" placeholder="Поиск по имени или email"><button class="btn bad" id="u_del" disabled>Удалить выбранных</button><span class="t-sub" id="u_cnt">Активных: ${active.length}</span></div>
+        <div style="overflow-x:auto"><table class="users-tbl"><thead><tr><th><input type="checkbox" id="u_all" aria-label="Выбрать всех"></th><th>Имя</th><th>Email для входа</th><th>Админ</th><th>Пароль</th><th>Временный пароль</th><th>Был(а)</th><th></th></tr></thead><tbody>
+          <tr data-u="new"><td></td><td><input class="inp" data-f="name" placeholder="Имя Фамилия"></td><td><input class="inp" data-f="login" type="email" placeholder="email"></td><td style="text-align:center"><input type="checkbox" data-f="is_admin"></td><td></td><td></td><td></td><td><button class="btn primary" data-usave="new">Добавить</button></td></tr>
+          ${active.map(userRow).join("")}
+        </tbody></table></div>
+        ${inactive.length ? `<details style="margin-top:14px"><summary class="t-sub" style="cursor:pointer">Отключённые: ${inactive.length}</summary>
+          <div style="overflow-x:auto;margin-top:8px"><table class="users-tbl"><tbody>${inactive.map(u => `<tr><td>${esc(u.name)}</td><td class="t-sub">${esc(u.login||"")}</td><td><div class="pw-set"><button class="btn" data-uon="${u.id}">Включить</button>${canRemove(u) ? `<button class="btn ghost" data-rm="${u.id}">Удалить</button>` : `<span class="t-sub">есть история</span>`}</div></td></tr>`).join("")}</tbody></table></div></details>` : ""}
+      </section>
     </div>`;
   const adm = async (action, p, ok) => { try { await api("pay_admin", {p_action: action, p}); toast(ok); } catch(e) { toast(e.message, true); } };
   m.querySelectorAll("[data-role]").forEach(s => s.onchange = () => adm("route_set", {role: s.dataset.role, user_id: s.value || null}, "Маршрут обновлён"));
@@ -719,7 +736,7 @@ async function renderAdmin(m){
   m.querySelectorAll("[data-add]").forEach(b => b.onclick = async () => { const i = m.querySelector(`[data-new="${b.dataset.add}"]`); if (!i.value.trim()) return; await adm("article_save", {group_id: b.dataset.add, name: i.value}, "Статья добавлена"); renderAdmin(m); });
   m.querySelectorAll("[data-usave]").forEach(b => b.onclick = async () => {
     const tr = b.closest("tr"), v = f => tr.querySelector(`[data-f="${f}"]`);
-    const p = {id: b.dataset.usave === "new" ? null : b.dataset.usave, name: v("name").value, login: v("login").value, is_admin: v("is_admin").checked, is_active: v("is_active").checked};
+    const p = {id: b.dataset.usave === "new" ? null : b.dataset.usave, name: v("name").value, login: v("login").value, is_admin: v("is_admin").checked, is_active: true};
     if (!p.name.trim() || !p.login.trim()) { toast("Укажите имя и email", true); return; }
     await adm("user_save", p, b.dataset.usave === "new" ? "Сотрудник добавлен. Задайте ему временный пароль." : "Сотрудник сохранён");
     if (b.dataset.usave === "new") renderAdmin(m);
@@ -730,6 +747,30 @@ async function renderAdmin(m){
     try { await api("pay_admin", {p_action:"set_password", p:{id: b.dataset.pwset, password: i.value}}); toast("Временный пароль задан. Передайте его сотруднику лично."); renderAdmin(m); }
     catch(e) { toast(e.message, true); }
   });
+  const byId = id => users.find(u => u.id === +id);
+  const setActive = async (id, on) => { const u = byId(id); try { await api("pay_admin", {p_action:"user_save", p:{id, name:u.name, login:u.login || "", is_admin: on ? u.is_admin : false, is_active:on}}); toast(on ? "Доступ включён" : `${u.name}: доступ отключён`); renderAdmin(m); } catch(e) { toast(e.message, true); } };
+  m.querySelectorAll("[data-off]").forEach(b => b.onclick = () => setActive(b.dataset.off, false));
+  m.querySelectorAll("[data-uon]").forEach(b => b.onclick = () => {
+    const u = byId(b.dataset.uon); if (!u.login) { toast("У сотрудника нет email. Добавьте его заново с email.", true); return; } setActive(b.dataset.uon, true); });
+  m.querySelectorAll("[data-rm]").forEach(b => b.onclick = async () => {
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Точно удалить?"; b.classList.add("bad"); return; }
+    try { await api("pay_admin_user_remove", {p_id: +b.dataset.rm}); toast("Удалено"); renderAdmin(m); } catch(e) { toast(e.message, true); }
+  });
+  /* массовое удаление */
+  const picks = () => [...m.querySelectorAll(".u-pick:checked")].map(c => +c.value);
+  const delBtn = $("#u_del");
+  const syncDel = () => { const n = picks().length; delBtn.disabled = !n; delBtn.textContent = n ? `Удалить выбранных: ${n}` : "Удалить выбранных"; delBtn.dataset.confirm = ""; };
+  m.querySelectorAll(".u-pick").forEach(c => c.onchange = syncDel);
+  $("#u_all").onchange = e => { m.querySelectorAll(".u-pick:not(:disabled)").forEach(c => { if (c.closest("tr").style.display !== "none") c.checked = e.target.checked; }); syncDel(); };
+  delBtn.onclick = async () => {
+    const ids = picks(); if (!ids.length) return;
+    if (delBtn.dataset.confirm !== "1") { delBtn.dataset.confirm = "1"; delBtn.textContent = `Подтвердите: удалить ${ids.length}`; return; }
+    delBtn.disabled = true; let ok = 0, fail = [];
+    for (const id of ids) { try { await api("pay_admin_user_remove", {p_id: id}); ok++; } catch(e) { fail.push(byId(id)?.name + ": " + e.message); } }
+    toast(fail.length ? `Удалено ${ok}. Не удалось: ${fail.join("; ")}` : `Удалено сотрудников: ${ok}`, !!fail.length);
+    renderAdmin(m);
+  };
+  $("#u_q").oninput = e => { const q = e.target.value.toLowerCase(); m.querySelectorAll("#usersBox tr[data-u]").forEach(tr => { if (tr.dataset.u === "new") return; const t = (tr.querySelector('[data-f="name"]').value + " " + tr.querySelector('[data-f="login"]').value).toLowerCase(); tr.style.display = t.includes(q) ? "" : "none"; }); };
 }
 
 /* ---------- старт ---------- */
