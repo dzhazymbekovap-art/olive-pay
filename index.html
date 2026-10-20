@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Платежи O-Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Раскладка: рабочий стол бухгалтера — шапка с вкладками, лента заявок, карточка справа выезжающей панелью */
+:root{
+  --bg:#f5f6f1; --surface:#ffffff; --sunken:#eceee6; --line:#dcdfd3; --ink:#1d2219; --muted:#666d5f;
+  --olive:#5d6b2b; --olive-ink:#ffffff; --olive-soft:#e6ead6;
+  --amber:#a86a0c; --amber-soft:#fbefd9; --blue:#2b5f8a; --blue-soft:#e1ecf5;
+  --green:#2f7a3d; --green-soft:#e0f0e2; --red:#a8322c; --red-soft:#f8e2e0; --grey-soft:#ececea;
+  --shadow:0 12px 40px rgba(29,34,25,.18);
+  --f-ui:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#141712; --surface:#1c201a; --sunken:#23281f; --line:#343a2e; --ink:#e8ebe2; --muted:#9da393;
+  --olive:#a9bb5c; --olive-ink:#151810; --olive-soft:#2c331d;
+  --amber:#e3a548; --amber-soft:#3a2c13; --blue:#7fb3de; --blue-soft:#1b2c3a;
+  --green:#7cc58a; --green-soft:#1c3220; --red:#ee8a83; --red-soft:#3d1d1b; --grey-soft:#2a2d28;
+  --shadow:0 12px 40px rgba(0,0,0,.5); color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+[hidden]{display:none!important}
+a{color:var(--olive)}
+:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
+
+/* ---------- кнопки и поля ---------- */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--olive);color:var(--olive-ink);border-color:var(--olive)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.good{background:var(--green);color:#fff;border-color:var(--green)}
+.btn.bad{background:transparent;color:var(--red);border-color:var(--red)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn:disabled{opacity:.5;cursor:default}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);min-width:0}
+label.f>span b{color:var(--red);font-weight:500}
+.inp{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 11px;color:var(--ink);font-size:15px}
+.inp:focus{border-color:var(--olive);outline:none;box-shadow:0 0 0 3px var(--olive-soft)}
+textarea.inp{min-height:80px;resize:vertical}
+.hint{font-size:12.5px;color:var(--muted)}
+.err{color:var(--red);font-size:13.5px}
+
+/* ---------- вход ---------- */
+#login{min-height:100vh;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left))}
+.login-card{width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+.brand i{width:30px;height:30px;border-radius:50%;background:var(--olive);display:inline-block;position:relative}
+.brand i::after{content:"";position:absolute;inset:7px 9px 7px 9px;border-radius:50%;background:var(--bg)}
+.login-card h1{font-size:26px;line-height:1.2;margin:8px 0 0;text-wrap:balance}
+.login-card p{margin:0;color:var(--muted)}
+
+/* ---------- шапка ---------- */
+header.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1240px;margin:0 auto;padding:10px max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:8px}
+.top-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.top-row .spacer{flex:1}
+.me{font-size:13px;color:var(--muted);text-align:right;line-height:1.25}
+.me b{color:var(--ink);font-weight:600;display:block}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{border:0;background:none;padding:9px 12px 10px;border-bottom:2px solid transparent;cursor:pointer;color:var(--muted);font-weight:500;white-space:nowrap;display:flex;gap:6px;align-items:center}
+nav.tabs button.on{color:var(--ink);border-bottom-color:var(--olive)}
+.badge{background:var(--olive);color:var(--olive-ink);border-radius:10px;font-size:11.5px;padding:0 7px;line-height:18px;font-weight:600}
+
+main{max-width:1240px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-right)) 60px max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:16px}
+.view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.view-head h2{margin:0;font-size:22px}
+.view-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+
+/* ---------- полоса этапов ---------- */
+.stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.stage{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stage.on{border-color:var(--olive);box-shadow:0 0 0 1px var(--olive)}
+.stage small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage strong{font-size:20px;font-weight:600}
+.stage span.num{font-size:12.5px;color:var(--muted)}
+
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toolbar .inp{max-width:280px}
+
+/* ---------- таблица заявок ---------- */
+.tbl-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+table.list{width:100%;border-collapse:collapse;min-width:760px}
+table.list th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.list td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+table.list tr:last-child td{border-bottom:0}
+table.list tbody tr{cursor:pointer}
+table.list tbody tr:hover{background:var(--sunken)}
+td.amt{text-align:right;white-space:nowrap;font-weight:600}
+th.amt{text-align:right}
+.t-title{font-weight:500}
+.t-sub{font-size:12.5px;color:var(--muted)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:2px 10px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-draft,.s-cancelled{background:var(--grey-soft);color:var(--muted)}
+.s-ops_review,.s-md_review{background:var(--amber-soft);color:var(--amber)}
+.s-accounting{background:var(--blue-soft);color:var(--blue)}
+.s-paid{background:var(--green-soft);color:var(--green)}
+.s-rejected{background:var(--red-soft);color:var(--red)}
+.late{color:var(--red);font-weight:600}
+
+/* карточки вместо таблицы на телефоне */
+.cards{display:none;flex-direction:column;gap:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.card-row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+@media (max-width:720px){.tbl-wrap.list-wrap{display:none}.cards{display:flex}}
+
+/* ---------- выезжающая панель ---------- */
+.scrim{position:fixed;inset:0;background:rgba(15,18,12,.45);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:var(--bg);z-index:21;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.drawer-head{padding:16px max(20px,env(safe-area-inset-right)) 12px 20px;padding-top:max(16px,env(safe-area-inset-top));border-bottom:1px solid var(--line);background:var(--surface);display:flex;gap:12px;align-items:flex-start}
+.drawer-head h3{margin:0;font-size:19px;line-height:1.3}
+.drawer-head .grow{flex:1;min-width:0}
+.drawer-body{flex:1;overflow-y:auto;padding:18px max(20px,env(safe-area-inset-right)) 18px 20px;display:flex;flex-direction:column;gap:18px}
+.drawer-foot{padding:12px max(20px,env(safe-area-inset-right)) 12px 20px;padding-bottom:max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--surface);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.drawer-foot .spacer{flex:1}
+.x{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+.full{grid-column:1/-1}
+
+/* маршрут согласования */
+.route{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.route div{font-size:12px;color:var(--muted);padding-top:8px;border-top:3px solid var(--line);line-height:1.3;min-width:0}
+.route div b{display:block;color:var(--ink);font-weight:600;font-size:12.5px}
+.route div.done{border-top-color:var(--olive)}
+.route div.now{border-top-color:var(--amber)}
+.route div.now b{color:var(--amber)}
+.route div.fail{border-top-color:var(--red)}
+@media (max-width:480px){.route div{font-size:11px}.route div b{font-size:11.5px}}
+
+dl.props{display:grid;grid-template-columns:minmax(120px,170px) 1fr;gap:8px 14px;margin:0}
+dl.props dt{color:var(--muted);font-size:13.5px}
+dl.props dd{margin:0;min-width:0;overflow-wrap:anywhere}
+@media (max-width:480px){dl.props{grid-template-columns:1fr}dl.props dt{margin-top:6px}}
+.big-amt{font-size:28px;font-weight:600}
+.sec-t{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:0 0 8px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.notice{border-radius:10px;padding:10px 12px;font-size:14px}
+.notice.red{background:var(--red-soft);color:var(--red)}
+.notice.green{background:var(--green-soft);color:var(--green)}
+.files{display:flex;flex-direction:column;gap:6px}
+.file{display:flex;align-items:center;gap:10px;justify-content:space-between;font-size:14px}
+.file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+ol.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+ol.hist li{display:grid;grid-template-columns:110px 1fr;gap:10px;font-size:14px}
+ol.hist time{color:var(--muted);font-size:12.5px}
+ol.hist em{display:block;font-style:normal;color:var(--muted);font-size:13.5px;margin-top:2px}
+.decide{display:flex;flex-direction:column;gap:8px}
+
+/* статьи: выбор */
+.art-hint{font-size:12.5px;color:var(--muted);min-height:18px}
+
+/* ---------- отчёт ---------- */
+table.rep{width:100%;border-collapse:collapse;min-width:620px}
+table.rep th,table.rep td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left}
+table.rep th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+table.rep td.n,table.rep th.n{text-align:right;white-space:nowrap}
+table.rep tr.grp td{background:var(--sunken);font-weight:600}
+table.rep tr.tot td{font-weight:700;border-top:2px solid var(--ink)}
+.bar{height:6px;border-radius:3px;background:var(--olive);opacity:.8}
+.bar-cell{width:22%}
+
+/* ---------- настройки ---------- */
+.adm{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.adm>*{min-width:0}
+.adm h3{margin:0 0 4px;font-size:17px}
+.route-set{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.grp-block{border-top:1px solid var(--line);padding-top:12px;margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.grp-block:first-of-type{border-top:0;margin-top:0;padding-top:0}
+.art-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.art-row .inp{flex:1;min-width:160px}
+.art-row.off .inp{opacity:.55}
+.users-tbl{width:100%;border-collapse:collapse;min-width:640px}
+.users-tbl td,.users-tbl th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}
+.users-tbl th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+
+.bell{position:relative;font-size:17px;padding:6px 10px}
+.bell .badge{position:absolute;top:0;right:0}
+.notif-list{display:flex;flex-direction:column;gap:6px}
+.notif{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;cursor:pointer;font-size:14px}
+.notif.unread{border-color:var(--olive);box-shadow:inset 3px 0 0 var(--olive)}
+.pw-state{font-size:12.5px;white-space:nowrap}
+.pw-state.none{color:var(--red)}.pw-state.temp{color:var(--amber)}.pw-state.ok{color:var(--green)}
+.pw-set{display:flex;gap:6px;align-items:center}
+.pw-set .inp{width:150px}
+@media (max-width:720px){#pwBtn{display:none}}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:40;font-size:14px;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.toast.bad{background:var(--red);color:#fff}
+.loading{opacity:.6;pointer-events:none}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(30px);opacity:.4}}}
+</style>
+</head>
+<body>
+
+<!-- ====== вход ====== -->
+<section id="login" hidden>
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="brand"><i></i>Платежи O-Live</div>
+    <h1>Заявки на оплату и их согласование</h1>
+    <p>Войдите под своим рабочим email. Если вы здесь впервые, возьмите временный пароль у администратора.</p>
+    <label class="f"><span>Email</span>
+      <input class="inp" id="loginEmail" type="email" inputmode="email" autocomplete="username" required placeholder="name@segodnyaa.kz"></label>
+    <label class="f"><span>Пароль</span>
+      <input class="inp" id="loginPass" type="password" autocomplete="current-password" required></label>
+    <div class="err" id="loginErr" hidden></div>
+    <div><button class="btn primary" id="loginBtn" type="submit">Войти</button></div>
+    <p class="hint">Забыли пароль? Попросите администратора задать новый временный пароль.</p>
+  </form>
+  <form class="login-card" id="pwForm" hidden autocomplete="off">
+    <div class="brand"><i></i>Платежи O-Live</div>
+    <h1 id="pwTitle">Придумайте свой пароль</h1>
+    <p id="pwLead">Вы вошли по временному паролю. Задайте постоянный: не короче 8 символов. Его будете знать только вы.</p>
+    <label class="f" id="pwOldWrap"><span>Текущий пароль</span><input class="inp" id="pwOld" type="password" autocomplete="current-password"></label>
+    <label class="f"><span>Новый пароль</span><input class="inp" id="pwNew" type="password" autocomplete="new-password" minlength="8" required></label>
+    <label class="f"><span>Повторите новый пароль</span><input class="inp" id="pwNew2" type="password" autocomplete="new-password" minlength="8" required></label>
+    <div class="err" id="pwErr" hidden></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Сохранить пароль</button><button class="btn ghost" type="button" id="pwCancel" hidden>Отмена</button></div>
+  </form>
+</section>
+
+<!-- ====== приложение ====== -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="top-in">
+      <div class="top-row">
+        <div class="brand"><i></i>Платежи O-Live</div>
+        <div class="spacer"></div>
+        <button class="btn primary" id="newBtn">+ Новая заявка</button>
+        <button class="btn ghost bell" id="bellBtn" aria-label="Уведомления">🔔<span class="badge" id="bellCount" hidden></span></button>
+        <div class="me"><b id="meName"></b><span id="meRole"></span></div>
+        <button class="btn ghost" id="pwBtn">Сменить пароль</button>
+        <button class="btn ghost" id="logoutBtn">Выйти</button>
+      </div>
+      <nav class="tabs" id="tabs"></nav>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+
+<div id="overlay" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* ===== Подключение к базе Olive (Supabase). Ключ публичный: доступ к данным только через функции pay_* с токеном сессии. ===== */
+const SB_URL = "https://vymjccflwkbvlqefsule.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWpjY2Zsd2tidmxxZWZzdWxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMDE4NzAsImV4cCI6MjA5OTY3Nzg3MH0.O3ymU7oZkOwUIxShZWA9FMkKqOdW1AHxAmme53Dwfkw";
+
+const STATUS = {
+  draft:{t:"Черновик"}, ops_review:{t:"У операционного директора"}, md_review:{t:"У управляющего директора"},
+  accounting:{t:"В бухгалтерии"}, paid:{t:"Оплачено"}, rejected:{t:"Отклонено"}, cancelled:{t:"Отозвано"}
+};
+const PTYPE = {cash:"Наличные", invoice:"Счёт на оплату (безнал)", card_transfer:"Перевод на карту", corp_card:"Корпоративная карта", reimbursement:"Возмещение сотруднику"};
+const ROLE_T = {ops_director:"Операционный директор", managing_director:"Управляющий директор", accountant:"Бухгалтерия"};
+const ACTION_T = {created:"Создал(а) черновик", submitted:"Отправил(а) на согласование", approved:"Согласовал(а)", rejected:"Отклонил(а)", paid:"Отметил(а) оплату", cancelled:"Отозвал(а) заявку"};
+
+let TOKEN = null, BOOT = null, LIST = [], VIEW = "mine", FILTER = {status:null, q:""};
+try { TOKEN = localStorage.getItem("olive_pay_token"); } catch(e) {}
+
+/* ---------- утилиты ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = (v, cur="KZT") => v == null ? "—" : Math.round(+v).toLocaleString("ru-RU").replace(/,/g," ") + (cur === "KZT" ? " ₸" : " " + cur);
+const dshort = d => d ? new Date(d).toLocaleDateString("ru-RU", {day:"2-digit", month:"2-digit", year:"2-digit"}) : "—";
+const dtime = d => d ? new Date(d).toLocaleString("ru-RU", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}) : "";
+const monthT = d => d ? new Date(d).toLocaleDateString("ru-RU", {month:"long", year:"numeric"}) : "—";
+const pill = s => `<span class="pill s-${s}">${STATUS[s]?.t || s}</span>`;
+function toast(msg, bad){ const t = $("#toast"); t.textContent = msg; t.className = "toast" + (bad ? " bad" : ""); t.hidden = false; clearTimeout(t._h); t._h = setTimeout(() => t.hidden = true, bad ? 6000 : 3000); }
+
+async function rpc(fn, args = {}) {
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
+    method:"POST", headers:{apikey:SB_KEY, Authorization:"Bearer " + SB_KEY, "Content-Type":"application/json"},
+    body: JSON.stringify(args)
+  });
+  const txt = await r.text(); let j = null; try { j = txt ? JSON.parse(txt) : null; } catch(e) { j = txt; }
+  if (!r.ok) {
+    const msg = (j && j.message) || txt || "Ошибка сервера";
+    if (msg === "AUTH") { logout(true); throw new Error("Сессия истекла, войдите снова"); }
+    throw new Error(msg === "NOT_FOUND" ? "Заявка не найдена или нет доступа" : msg);
+  }
+  return j;
+}
+const api = (fn, args = {}) => rpc(fn, {p_token: TOKEN, ...args});
+const roles = () => BOOT?.me?.roles || [];
+const isApprover = () => roles().length > 0;
+const seesAll = () => isApprover() || BOOT?.me?.is_admin;
+const articleById = id => { for (const g of BOOT.groups) for (const a of g.articles) if (a.id === id) return {a, g}; return null; };
+
+/* ---------- вход ---------- */
+let TEMP_PW = null;  // временный пароль держим в памяти, только чтобы сразу сменить его
+function showLogin(){
+  $("#app").hidden = true; $("#login").hidden = false; $("#loginForm").hidden = false; $("#pwForm").hidden = true;
+  $("#loginErr").hidden = true; setTimeout(()=>$("#loginEmail").focus(),50);
+}
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = $("#loginBtn"), err = $("#loginErr"); err.hidden = true; btn.disabled = true;
+  try {
+    const pass = $("#loginPass").value;
+    const r = await rpc("pay_login", {p_login: $("#loginEmail").value.trim(), p_password: pass});
+    if (!r.ok) throw new Error(r.error);
+    TOKEN = r.token; try { localStorage.setItem("olive_pay_token", TOKEN); } catch(e) {}
+    $("#loginPass").value = "";
+    if (r.must_change) { TEMP_PW = pass; showPwForm(true); } else await start();
+  } catch(ex) { err.textContent = ex.message; err.hidden = false; }
+  btn.disabled = false;
+});
+function showPwForm(forced){
+  $("#app").hidden = true; $("#login").hidden = false; $("#loginForm").hidden = true; $("#pwForm").hidden = false;
+  $("#pwTitle").textContent = forced ? "Придумайте свой пароль" : "Смена пароля";
+  $("#pwLead").textContent = forced ? "Вы вошли по временному паролю. Задайте постоянный: не короче 8 символов. Его будете знать только вы." : "Новый пароль: не короче 8 символов. На других устройствах после смены нужно будет войти заново.";
+  $("#pwOldWrap").hidden = forced; $("#pwCancel").hidden = forced; $("#pwErr").hidden = true;
+  ["#pwOld","#pwNew","#pwNew2"].forEach(s => $(s).value = "");
+  setTimeout(() => (forced ? $("#pwNew") : $("#pwOld")).focus(), 50);
+}
+$("#pwForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("#pwErr"); err.hidden = true;
+  const nw = $("#pwNew").value;
+  try {
+    if (nw !== $("#pwNew2").value) throw new Error("Пароли не совпадают");
+    if (nw.length < 8) throw new Error("Пароль должен быть не короче 8 символов");
+    await api("pay_change_password", {p_old: TEMP_PW ?? $("#pwOld").value, p_new: nw});
+    TEMP_PW = null; toast("Пароль сохранён"); await start();
+  } catch(ex) { err.textContent = ex.message; err.hidden = false; }
+});
+$("#pwCancel").onclick = () => start();
+$("#pwBtn").onclick = () => { TEMP_PW = null; showPwForm(false); };
+async function logout(silent){
+  if (!silent && TOKEN) { try { await rpc("pay_logout", {p_token: TOKEN}); } catch(e) {} }
+  TOKEN = null; BOOT = null; TEMP_PW = null; try { localStorage.removeItem("olive_pay_token"); } catch(e) {}
+  closeOverlay(); showLogin();
+}
+$("#logoutBtn").onclick = () => logout(false);
+
+/* ---------- уведомления ---------- */
+function setUnread(n){ const b = $("#bellCount"); b.textContent = n; b.hidden = !n; document.title = (n ? `(${n}) ` : "") + "Платежи O-Live"; }
+setInterval(async () => { if (TOKEN && BOOT) { try { setUnread(await api("pay_unread")); } catch(e) {} } }, 60000);
+$("#bellBtn").onclick = async () => {
+  let list; try { list = await api("pay_notifications_list"); } catch(e) { toast(e.message, true); return; }
+  const kindT = {todo:"Нужно действие", approved:"Одобрено", rejected:"Отклонено", paid:"Оплачено"};
+  openOverlay(`
+    <div class="drawer-head"><div class="grow"><h3>Уведомления</h3></div>${list.some(n=>!n.read)?`<button class="btn ghost" id="readAll">Прочитать все</button>`:""}<button class="x" data-close aria-label="Закрыть">×</button></div>
+    <div class="drawer-body">${list.length ? `<div class="notif-list">${list.map(n => `
+      <button class="notif ${n.read?"":"unread"}" data-n="${n.id}" data-r="${n.request_id||""}"><span class="t-sub">${kindT[n.kind]||""} · ${dtime(n.at)}</span><span>${esc(n.text)}</span></button>`).join("")}</div>`
+      : `<div class="empty"><b>Уведомлений нет</b>Здесь появятся заявки на ваше решение и ответы по вашим заявкам.</div>`}</div>`);
+  if ($("#readAll")) $("#readAll").onclick = async () => { await api("pay_notifications_read", {p_id: null}); setUnread(0); $("#bellBtn").click(); };
+  document.querySelectorAll("[data-n]").forEach(b => b.onclick = async () => {
+    api("pay_notifications_read", {p_id: +b.dataset.n}).then(() => api("pay_unread")).then(setUnread).catch(()=>{});
+    if (b.dataset.r) openDetail(+b.dataset.r);
+  });
+};
+
+/* ---------- запуск ---------- */
+async function start(){
+  try { BOOT = await api("pay_bootstrap"); }
+  catch(e) { showLogin(); return; }
+  if (BOOT.me.must_change && TEMP_PW === null) { await logout(true); $("#loginErr").textContent = "Войдите по временному паролю, чтобы задать свой."; $("#loginErr").hidden = false; return; }
+  $("#login").hidden = true; $("#app").hidden = false;
+  setUnread(BOOT.unread || 0);
+  $("#meName").textContent = BOOT.me.name;
+  $("#meRole").textContent = roles().map(r => ROLE_T[r]).join(", ") || (BOOT.me.is_admin ? "Администратор" : "Сотрудник");
+  const h = (location.hash || "").slice(1);
+  VIEW = ["mine","inbox","all","report","admin"].includes(h) ? h : (isApprover() ? "inbox" : "mine");
+  await refresh();
+}
+async function refresh(){
+  const mineOnly = !(VIEW === "all" || VIEW === "inbox");
+  try { LIST = await api("pay_list", {p_filter: {mine: mineOnly}}); } catch(e) { toast(e.message, true); LIST = []; }
+  api("pay_unread").then(setUnread).catch(() => {});
+  renderTabs(); render();
+}
+function inboxItems(){
+  const r = roles();
+  return LIST.filter(x => (x.status === "ops_review" && r.includes("ops_director")) || (x.status === "md_review" && r.includes("managing_director")) || (x.status === "accounting" && r.includes("accountant")));
+}
+let inboxCount = 0;
+function renderTabs(){
+  if (VIEW === "inbox" || VIEW === "all") inboxCount = inboxItems().length;
+  const tabs = [["mine","Мои заявки"]];
+  if (isApprover()) tabs.push(["inbox","Ждут меня", inboxCount]);
+  if (seesAll()) tabs.push(["all","Все заявки"]);
+  tabs.push(["report","Отчёт по статьям"]);
+  if (BOOT.me.is_admin) tabs.push(["admin","Настройки"]);
+  $("#tabs").innerHTML = tabs.map(([k,t,n]) => `<button class="${VIEW===k?"on":""}" data-v="${k}">${t}${n?` <span class="badge">${n}</span>`:""}</button>`).join("");
+  $("#tabs").querySelectorAll("button").forEach(b => b.onclick = () => go(b.dataset.v));
+}
+function go(v){ VIEW = v; FILTER = {status:null, q:""}; try { history.replaceState(null, "", "#" + v); } catch(e) {} refresh(); }
+
+/* ---------- списки ---------- */
+function render(){
+  const m = $("#main");
+  if (VIEW === "report") return renderReport(m);
+  if (VIEW === "admin") return renderAdmin(m);
+  let items = VIEW === "inbox" ? inboxItems() : LIST;
+  const heads = {
+    mine:["Мои заявки","Черновики, заявки на согласовании и история ваших платежей."],
+    inbox:["Ждут меня","Заявки, по которым сейчас нужно ваше решение."],
+    all:["Все заявки","Весь поток платежей O-Live по этапам маршрута."]
+  }[VIEW];
+  const order = ["draft","ops_review","md_review","accounting","paid","rejected","cancelled"];
+  const counts = {};
+  for (const x of items) { counts[x.status] ??= {n:0, s:0}; counts[x.status].n++; counts[x.status].s += +x.amount || 0; }
+  const stageHtml = VIEW === "inbox" ? "" : `<div class="stages">${order.filter(s => counts[s]).map(s => `
+    <button class="stage ${FILTER.status===s?"on":""}" data-s="${s}"><small>${STATUS[s].t}</small><strong class="num">${counts[s].n}</strong><span class="num">${money(counts[s].s)}</span></button>`).join("")}</div>`;
+  if (FILTER.status) items = items.filter(x => x.status === FILTER.status);
+  const q = FILTER.q.toLowerCase();
+  if (q) items = items.filter(x => [x.number, x.title, x.counterparty, x.author_name, x.article_name, x.group_name, x.description].join(" ").toLowerCase().includes(q));
+
+  m.innerHTML = `
+    <div class="view-head"><div><h2>${heads[0]}</h2><p>${heads[1]}</p></div></div>
+    ${stageHtml}
+    <div class="toolbar"><input class="inp" id="q" type="search" placeholder="Поиск: номер, назначение, получатель, статья" value="${esc(FILTER.q)}">
+      ${FILTER.status ? `<button class="btn ghost" id="clr">Сбросить фильтр «${STATUS[FILTER.status].t}»</button>` : ""}</div>
+    ${items.length ? listHtml(items) : emptyHtml()}`;
+  m.querySelectorAll(".stage").forEach(b => b.onclick = () => { FILTER.status = FILTER.status === b.dataset.s ? null : b.dataset.s; render(); });
+  const qi = $("#q"); qi.oninput = () => { FILTER.q = qi.value; const pos = qi.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos,pos); };
+  if ($("#clr")) $("#clr").onclick = () => { FILTER.status = null; render(); };
+  m.querySelectorAll("[data-id]").forEach(el => el.onclick = () => openDetail(+el.dataset.id));
+}
+function emptyHtml(){
+  if (VIEW === "inbox") return `<div class="box empty"><b>Всё разобрано</b>Новых заявок на ваше решение нет.</div>`;
+  if (VIEW === "mine" && !LIST.length) return `<div class="box empty"><b>Пока нет заявок</b>Нажмите «+ Новая заявка», выберите статью расходов и приложите служебную записку или счёт.</div>`;
+  return `<div class="box empty"><b>Ничего не найдено</b>Измените поиск или фильтр.</div>`;
+}
+function ageHtml(x){
+  if (!["ops_review","md_review","accounting"].includes(x.status)) return "";
+  const d = x.days_in_stage || 0;
+  return `<div class="t-sub ${d>=2?"late":""}">${d === 0 ? "сегодня" : d + " дн. на этапе"}</div>`;
+}
+function listHtml(items){
+  const rows = items.map(x => `
+    <tr data-id="${x.id}">
+      <td class="num">${x.number}<div class="t-sub">${dshort(x.created_at)}</div></td>
+      <td><div class="t-title">${esc(x.title)}</div><div class="t-sub">${esc(x.counterparty || "")}${x.counterparty && VIEW!=="mine" ? " · " : ""}${VIEW!=="mine" ? esc(x.author_name) : ""}</div></td>
+      <td><div>${esc(x.article_name || "—")}</div><div class="t-sub">${esc(x.group_name || "")}</div></td>
+      <td class="amt num">${money(x.amount, x.currency)}<div class="t-sub">${PTYPE[x.payment_type] || ""}</div></td>
+      <td>${pill(x.status)}${ageHtml(x)}</td>
+    </tr>`).join("");
+  const cards = items.map(x => `
+    <div class="card" data-id="${x.id}">
+      <div class="card-row"><span class="num t-sub">${x.number} · ${dshort(x.created_at)}</span>${pill(x.status)}</div>
+      <div class="card-row"><span class="t-title">${esc(x.title)}</span><span class="num" style="font-weight:600">${money(x.amount, x.currency)}</span></div>
+      <div class="t-sub">${esc(x.group_name || "")} / ${esc(x.article_name || "—")}${VIEW!=="mine" ? " · " + esc(x.author_name) : ""}</div>${ageHtml(x)}
+    </div>`).join("");
+  return `<div class="tbl-wrap list-wrap"><table class="list"><thead><tr><th>№</th><th>Назначение</th><th>Статья расходов</th><th class="amt">Сумма</th><th>Этап</th></tr></thead><tbody>${rows}</tbody></table></div><div class="cards">${cards}</div>`;
+}
+
+/* ---------- панель ---------- */
+function openOverlay(html){
+  const o = $("#overlay"); o.innerHTML = `<div class="scrim"></div><aside class="drawer" role="dialog" aria-modal="true">${html}</aside>`; o.hidden = false;
+  o.querySelector(".scrim").onclick = closeOverlay;
+  o.querySelectorAll("[data-close]").forEach(b => b.onclick = closeOverlay);
+  document.body.style.overflow = "hidden";
+}
+function closeOverlay(){ const o = $("#overlay"); o.hidden = true; o.innerHTML = ""; document.body.style.overflow = ""; }
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#overlay").hidden) closeOverlay(); });
+
+/* ---------- форма заявки ---------- */
+$("#newBtn").onclick = () => openEditor(null);
+function articleOptions(groupId){
+  const g = BOOT.groups.find(g => g.id === groupId); if (!g) return `<option value="">Сначала выберите группу</option>`;
+  return `<option value="">Выберите статью</option>` + g.articles.filter(a => a.is_active).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join("");
+}
+function openEditor(req){
+  const r = req || {currency:"KZT"};
+  const found = r.article_id ? articleById(r.article_id) : null;
+  const gid = found?.g.id || null;
+  const month = r.expense_month ? r.expense_month.slice(0,7) : new Date().toISOString().slice(0,7);
+  openOverlay(`
+    <div class="drawer-head"><div class="grow"><div class="t-sub num">${r.id ? "ПЛ-" + String(r.id).padStart(4,"0") + " · черновик" : "Новая заявка"}</div><h3>${r.id ? "Редактирование заявки" : "Заявка на оплату"}</h3></div><button class="x" data-close aria-label="Закрыть">×</button></div>
+    <form class="drawer-body" id="edForm">
+      <div class="grid2">
+        <label class="f full"><span>За что платим <b>*</b></span><input class="inp" id="e_title" required maxlength="200" value="${esc(r.title)}" placeholder="Например: оплата подписки Claude за октябрь"></label>
+        <label class="f"><span>Группа расходов <b>*</b></span><select class="inp" id="e_group"><option value="">Выберите группу</option>${BOOT.groups.filter(g=>g.is_active).map(g => `<option value="${g.id}" ${g.id===gid?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label>
+        <label class="f"><span>Статья <b>*</b></span><select class="inp" id="e_article">${articleOptions(gid)}</select></label>
+        <div class="art-hint full" id="e_hint"></div>
+        <label class="f"><span>Сумма, ₸ <b>*</b></span><input class="inp num" id="e_amount" inputmode="decimal" value="${r.amount ?? ""}" placeholder="0"></label>
+        <label class="f"><span>Тип платежа <b>*</b></span><select class="inp" id="e_ptype"><option value="">Выберите</option>${Object.entries(PTYPE).map(([k,t]) => `<option value="${k}" ${r.payment_type===k?"selected":""}>${t}</option>`).join("")}</select></label>
+        <label class="f"><span>Получатель</span><input class="inp" id="e_cp" value="${esc(r.counterparty)}" placeholder="Компания или ФИО"></label>
+        <label class="f"><span>№ счёта / договора</span><input class="inp" id="e_inv" value="${esc(r.invoice_no)}"></label>
+        <label class="f"><span>Оплатить до</span><input class="inp" id="e_until" type="date" value="${r.pay_until || ""}"></label>
+        <label class="f"><span>Месяц расхода</span><input class="inp" id="e_month" type="month" value="${month}"></label>
+        <label class="f full"><span>Описание и обоснование</span><textarea class="inp" id="e_desc" placeholder="Что покупаем, зачем, за какой период">${esc(r.description)}</textarea></label>
+        <label class="f full"><span>Ссылка на служебную записку или счёт</span><input class="inp" id="e_link" type="url" value="${esc(r.doc_link)}" placeholder="https://… (Google Drive, Яндекс Диск)"></label>
+        <div class="full box" id="e_files"></div>
+      </div>
+      <div class="err" id="e_err" hidden></div>
+    </form>
+    <div class="drawer-foot"><button class="btn" id="e_save">Сохранить черновик</button><div class="spacer"></div><button class="btn primary" id="e_submit">Отправить на согласование</button></div>`);
+  let reqId = r.id || null;
+  const gs = $("#e_group"), as = $("#e_article");
+  if (r.article_id) as.value = r.article_id;
+  const showHint = () => { const f = articleById(+as.value); $("#e_hint").textContent = f?.a.hint || ""; };
+  gs.onchange = () => { as.innerHTML = articleOptions(+gs.value); showHint(); };
+  as.onchange = showHint; showHint();
+  renderEdFiles(reqId, req?.files || []);
+
+  const payload = () => ({
+    id: reqId, title: $("#e_title").value, description: $("#e_desc").value,
+    amount: $("#e_amount").value.replace(/\s/g,"").replace(",", "."), payment_type: $("#e_ptype").value,
+    article_id: as.value, counterparty: $("#e_cp").value, invoice_no: $("#e_inv").value,
+    pay_until: $("#e_until").value, expense_month: $("#e_month").value ? $("#e_month").value + "-01" : "", doc_link: $("#e_link").value
+  });
+  async function save(){
+    const err = $("#e_err"); err.hidden = true;
+    const p = payload();
+    if (p.amount && !(+p.amount > 0)) throw new Error("Сумма должна быть числом больше нуля");
+    const res = await api("pay_save", {p});
+    reqId = res.id; return reqId;
+  }
+  const busy = on => $("#overlay .drawer").classList.toggle("loading", on);
+  $("#e_save").onclick = async () => {
+    busy(true);
+    try { await save(); toast("Черновик сохранён"); renderEdFiles(reqId, (await api("pay_get", {p_id:reqId})).files); refresh(); }
+    catch(e) { $("#e_err").textContent = e.message; $("#e_err").hidden = false; }
+    busy(false);
+  };
+  $("#e_submit").onclick = async () => {
+    busy(true);
+    try { await save(); await api("pay_submit", {p_id: reqId}); toast("Заявка отправлена операционному директору"); closeOverlay(); refresh(); }
+    catch(e) { $("#e_err").textContent = e.message; $("#e_err").hidden = false; renderEdFiles(reqId, (await api("pay_get", {p_id:reqId}).catch(()=>({files:[]}))).files); }
+    busy(false);
+  };
+  $("#edForm").onsubmit = e => e.preventDefault();
+
+  function renderEdFiles(id, files){
+    const box = $("#e_files"); if (!box) return;
+    box.innerHTML = `<p class="sec-t">Файлы: служебная записка, счёт</p>
+      <div class="files">${files.map(f => `<div class="file"><span>📎 ${esc(f.name)}</span><span class="t-sub">${(f.size/1024).toFixed(0)} КБ</span></div>`).join("") || `<div class="hint">${id ? "Файлов пока нет." : "Файл можно прикрепить сразу: черновик сохранится автоматически."}</div>`}</div>
+      <div style="margin-top:8px"><label class="btn" for="e_file">Прикрепить файл</label><input id="e_file" type="file" hidden></div>`;
+    $("#e_file").onchange = async ev => {
+      const file = ev.target.files[0]; if (!file) return;
+      busy(true);
+      try {
+        const rid = id || await save();
+        await uploadFile(rid, file); toast("Файл прикреплён");
+        renderEdFiles(rid, (await api("pay_get", {p_id: rid})).files); refresh();
+      } catch(e) { toast(e.message, true); }
+      busy(false);
+    };
+  }
+}
+async function uploadFile(requestId, file){
+  if (file.size > 20*1024*1024) throw new Error("Файл больше 20 МБ");
+  const fd = new FormData(); fd.append("token", TOKEN); fd.append("request_id", requestId); fd.append("file", file);
+  const r = await fetch(`${SB_URL}/functions/v1/pay-files`, {method:"POST", headers:{Authorization:"Bearer " + SB_KEY, apikey:SB_KEY}, body:fd});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) { if (j.error === "AUTH") logout(true); throw new Error(j.error || "Не удалось загрузить файл"); }
+}
+async function fileUrl(fileId){
+  const r = await fetch(`${SB_URL}/functions/v1/pay-files`, {method:"POST", headers:{Authorization:"Bearer " + SB_KEY, apikey:SB_KEY, "Content-Type":"application/json"}, body: JSON.stringify({action:"url", token:TOKEN, file_id:fileId})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) throw new Error(j.error || "Не удалось получить файл");
+  return j.url;
+}
+
+/* ---------- карточка заявки ---------- */
+function routeHtml(x){
+  const steps = [["Автор", x.author_name], ...BOOT.route.map(r => [r.title, r.user_name || "не назначен"]), ["Оплачено", ""]];
+  const idx = {draft:0, ops_review:1, md_review:2, accounting:3, paid:5}[x.status];
+  let failAt = -1;
+  if (x.status === "rejected" || x.status === "cancelled") {
+    const last = [...x.events].reverse().find(e => e.action === "rejected" || e.action === "cancelled");
+    failAt = {ops_review:1, md_review:2, draft:0}[last?.from] ?? 1;
+  }
+  return `<div class="route">${steps.map((s,i) => {
+    let c = "";
+    if (failAt >= 0) c = i < failAt ? "done" : i === failAt ? "fail" : "";
+    else c = i < idx ? "done" : i === idx ? "now" : "";
+    if (x.status === "paid") c = "done";
+    return `<div class="${c}"><b>${esc(s[0])}</b>${esc(s[1])}</div>`;
+  }).join("")}</div>`;
+}
+async function openDetail(id){
+  let x;
+  try { x = await api("pay_get", {p_id: id}); } catch(e) { toast(e.message, true); return; }
+  const can = x.can;
+  const lastReject = [...x.events].reverse().find(e => e.action === "rejected");
+  const evs = x.events.map(e => `<li><time>${dtime(e.at)}</time><div><b>${esc(e.actor || "")}</b> — ${ACTION_T[e.action] || e.action}${e.to && e.action==="approved" ? ` → ${STATUS[e.to].t.toLowerCase()}` : ""}${e.comment ? `<em>«${esc(e.comment)}»</em>` : ""}</div></li>`).join("");
+  const decideBlock = can.decide ? `
+    <div class="box decide"><p class="sec-t">Ваше решение</p>
+      <textarea class="inp" id="d_comment" placeholder="Комментарий. При отказе обязателен: автор увидит причину в уведомлении."></textarea>
+      <div class="err" id="d_err" hidden></div></div>` : "";
+  const payBlock = can.pay ? `
+    <div class="box decide"><p class="sec-t">Оплата</p>
+      <textarea class="inp" id="p_comment" placeholder="Комментарий для автора: когда и как оплачено (необязательно)"></textarea></div>` : "";
+  openOverlay(`
+    <div class="drawer-head"><div class="grow"><div class="t-sub num">${x.number} · создана ${dshort(x.created_at)}</div><h3>${esc(x.title)}</h3><div style="margin-top:6px">${pill(x.status)}</div></div><button class="x" data-close aria-label="Закрыть">×</button></div>
+    <div class="drawer-body">
+      ${routeHtml(x)}
+      ${x.status === "rejected" && lastReject ? `<div class="notice red"><b>Отклонено:</b> ${esc(lastReject.comment || "без комментария")} <span class="t-sub">— ${esc(lastReject.actor)}</span></div>` : ""}
+      ${x.status === "paid" ? `<div class="notice green"><b>Оплачено ${dshort(x.paid_at)}</b>${x.paid_comment ? ": " + esc(x.paid_comment) : ""}</div>` : ""}
+      <div><div class="big-amt num">${money(x.amount, x.currency)}</div><div class="t-sub">${PTYPE[x.payment_type] || "Тип платежа не указан"}</div></div>
+      <dl class="props">
+        <dt>Статья расходов</dt><dd>${esc(x.group_name || "—")} / <b>${esc(x.article_name || "—")}</b></dd>
+        <dt>Автор</dt><dd>${esc(x.author_name)}</dd>
+        <dt>Получатель</dt><dd>${esc(x.counterparty || "—")}</dd>
+        <dt>№ счёта / договора</dt><dd>${esc(x.invoice_no || "—")}</dd>
+        <dt>Оплатить до</dt><dd>${x.pay_until ? dshort(x.pay_until) : "—"}</dd>
+        <dt>Месяц расхода</dt><dd>${monthT(x.expense_month)}</dd>
+        <dt>Описание</dt><dd style="white-space:pre-wrap">${esc(x.description || "—")}</dd>
+        ${x.doc_link ? `<dt>Документ</dt><dd><a href="${esc(x.doc_link)}" target="_blank" rel="noopener">${esc(x.doc_link)}</a></dd>` : ""}
+      </dl>
+      <div class="box"><p class="sec-t">Файлы</p><div class="files" id="d_files">${x.files.map(f => `<div class="file"><span>📎 ${esc(f.name)}</span><button class="btn ghost" data-file="${f.id}">Открыть</button></div>`).join("") || `<div class="hint">Нет файлов</div>`}</div>
+        ${can.files ? `<div style="margin-top:8px"><label class="btn" for="d_file">Прикрепить файл</label><input id="d_file" type="file" hidden></div>` : ""}</div>
+      ${decideBlock}${payBlock}
+      <div><p class="sec-t">История</p><ol class="hist">${evs}</ol></div>
+    </div>
+    <div class="drawer-foot">
+      ${can.edit ? `<button class="btn" id="a_edit">Редактировать</button>` : ""}
+      ${can.copy ? `<button class="btn" id="a_copy">Создать копию</button>` : ""}
+      ${can.cancel ? `<button class="btn ghost" id="a_cancel">Отозвать</button>` : ""}
+      <div class="spacer"></div>
+      ${can.decide ? `<button class="btn bad" id="a_reject">Отклонить</button><button class="btn good" id="a_approve">Согласовать</button>` : ""}
+      ${can.pay ? `<button class="btn good" id="a_paid">Оплачено</button>` : ""}
+      ${can.submit ? `<button class="btn primary" id="a_submit">Отправить на согласование</button>` : ""}
+    </div>`);
+  const busy = on => $("#overlay .drawer")?.classList.toggle("loading", on);
+  const act = async (fn, okMsg) => { busy(true); try { await fn(); toast(okMsg); closeOverlay(); refresh(); } catch(e) { busy(false); const de = $("#d_err"); if (de) { de.textContent = e.message; de.hidden = false; } else toast(e.message, true); } };
+  document.querySelectorAll("[data-file]").forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try { const url = await fileUrl(+b.dataset.file); const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Скачать"; a.className = "btn"; b.replaceWith(a); a.click(); }
+    catch(e) { toast(e.message, true); b.disabled = false; }
+  });
+  if ($("#d_file")) $("#d_file").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; busy(true); try { await uploadFile(x.id, f); toast("Файл прикреплён"); openDetail(x.id); } catch(e) { toast(e.message, true); busy(false); } };
+  if ($("#a_edit")) $("#a_edit").onclick = () => openEditor(x);
+  if ($("#a_copy")) $("#a_copy").onclick = async () => { try { const r = await api("pay_copy", {p_id: x.id}); const c = await api("pay_get", {p_id: r.id}); refresh(); openEditor(c); } catch(e) { toast(e.message, true); } };
+  if ($("#a_cancel")) $("#a_cancel").onclick = () => act(() => api("pay_cancel", {p_id: x.id, p_comment: null}), "Заявка отозвана");
+  if ($("#a_submit")) $("#a_submit").onclick = () => act(() => api("pay_submit", {p_id: x.id}), "Заявка отправлена на согласование");
+  if ($("#a_approve")) $("#a_approve").onclick = () => act(() => api("pay_decide", {p_id: x.id, p_approve: true, p_comment: $("#d_comment").value || null}), "Согласовано");
+  if ($("#a_reject")) $("#a_reject").onclick = () => act(() => api("pay_decide", {p_id: x.id, p_approve: false, p_comment: $("#d_comment").value}), "Заявка отклонена, автор получит уведомление");
+  if ($("#a_paid")) $("#a_paid").onclick = () => act(() => api("pay_mark_paid", {p_id: x.id, p_comment: $("#p_comment").value || null}), "Отмечено как оплачено");
+}
+
+/* ---------- отчёт ---------- */
+let REP = {from:null, to:null, basis:"month"};
+function monthRange(offset){
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + offset);
+  const from = new Date(d), to = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const f = x => x.getFullYear() + "-" + String(x.getMonth()+1).padStart(2,"0") + "-" + String(x.getDate()).padStart(2,"0");
+  return [f(from), f(to)];
+}
+async function renderReport(m){
+  if (!REP.from) [REP.from, REP.to] = monthRange(0);
+  m.innerHTML = `
+    <div class="view-head"><div><h2>Отчёт по статьям расходов</h2><p>${seesAll() ? "Все согласованные и оплаченные заявки." : "Только ваши заявки."} Черновики, отклонённые и отозванные не учитываются.</p></div></div>
+    <div class="toolbar">
+      <button class="btn" data-m="-1">Прошлый месяц</button><button class="btn" data-m="0">Этот месяц</button>
+      <label class="f"><span>С</span><input class="inp" type="date" id="r_from" value="${REP.from}"></label>
+      <label class="f"><span>По</span><input class="inp" type="date" id="r_to" value="${REP.to}"></label>
+      <label class="f"><span>Считать по дате</span><select class="inp" id="r_basis">
+        <option value="month" ${REP.basis==="month"?"selected":""}>Месяц расхода</option>
+        <option value="paid" ${REP.basis==="paid"?"selected":""}>Дата оплаты</option>
+        <option value="created" ${REP.basis==="created"?"selected":""}>Дата заявки</option></select></label>
+    </div>
+    <div id="r_out" class="tbl-wrap"><div class="empty">Считаю…</div></div>`;
+  m.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { [REP.from, REP.to] = monthRange(+b.dataset.m); renderReport(m); });
+  ["r_from","r_to","r_basis"].forEach(id => $("#"+id).onchange = () => { REP.from = $("#r_from").value; REP.to = $("#r_to").value; REP.basis = $("#r_basis").value; renderReport(m); });
+  let rows;
+  try { rows = await api("pay_report", {p_from: REP.from, p_to: REP.to, p_basis: REP.basis}); } catch(e) { $("#r_out").innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  if (!rows.length) { $("#r_out").innerHTML = `<div class="empty"><b>За период нет расходов</b>Выберите другой период или основание даты.</div>`; return; }
+  const groups = []; const gm = {};
+  for (const r of rows) { if (!gm[r.group_id]) { gm[r.group_id] = {name:r.group_name, paid:0, work:0, cnt:0, items:[]}; groups.push(gm[r.group_id]); } const g = gm[r.group_id]; g.paid += +r.paid || 0; g.work += +r.in_work || 0; g.cnt += r.cnt; g.items.push(r); }
+  const total = groups.reduce((s,g) => s + g.paid + g.work, 0) || 1;
+  const tp = groups.reduce((s,g) => s + g.paid, 0), tw = groups.reduce((s,g) => s + g.work, 0), tc = groups.reduce((s,g) => s + g.cnt, 0);
+  $("#r_out").innerHTML = `<table class="rep"><thead><tr><th>Статья</th><th class="n">Заявок</th><th class="n">Оплачено</th><th class="n">В работе</th><th class="n">Итого</th><th class="bar-cell">Доля</th></tr></thead><tbody>
+    ${groups.map(g => `<tr class="grp"><td>${esc(g.name)}</td><td class="n num">${g.cnt}</td><td class="n num">${g.paid ? money(g.paid) : "—"}</td><td class="n num">${g.work ? money(g.work) : "—"}</td><td class="n num">${money(g.paid+g.work)}</td><td class="bar-cell"><div class="bar" style="width:${((g.paid+g.work)/total*100).toFixed(1)}%"></div></td></tr>
+      ${g.items.map(r => `<tr><td style="padding-left:26px">${esc(r.article_name)}</td><td class="n num">${r.cnt}</td><td class="n num">${r.paid ? money(r.paid) : "—"}</td><td class="n num">${r.in_work ? money(r.in_work) : "—"}</td><td class="n num">${money((+r.paid||0)+(+r.in_work||0))}</td><td></td></tr>`).join("")}`).join("")}
+    <tr class="tot"><td>Всего</td><td class="n num">${tc}</td><td class="n num">${money(tp)}</td><td class="n num">${money(tw)}</td><td class="n num">${money(tp+tw)}</td><td></td></tr>
+  </tbody></table>`;
+}
+
+/* ---------- настройки ---------- */
+async function renderAdmin(m){
+  let users;
+  try { [users, BOOT] = await Promise.all([api("pay_admin", {p_action:"users"}), api("pay_bootstrap")]); } catch(e) { m.innerHTML = `<div class="box empty">${esc(e.message)}</div>`; return; }
+  const userOpts = sel => `<option value="">Не назначен</option>` + users.filter(u => u.is_active).map(u => `<option value="${u.id}" ${u.id===sel?"selected":""}>${esc(u.name)}</option>`).join("");
+  m.innerHTML = `
+    <div class="view-head"><div><h2>Настройки</h2><p>Маршрут согласования, статьи расходов и доступ сотрудников.</p></div></div>
+    <div class="adm">
+      <section class="box"><h3>Маршрут согласования</h3><p class="hint">Кто получает заявки на каждом шаге. Этому человеку приходит уведомление в колокольчик, а заявка появляется во вкладке «Ждут меня».</p>
+        <div class="route-set">${BOOT.route.map(r => `<label class="f"><span>${esc(r.title)}</span><select class="inp" data-role="${r.role}">${userOpts(r.user_id)}</select></label>`).join("")}</div></section>
+      <section class="box"><h3>Статьи расходов</h3><p class="hint">Группа соответствует статье в P&amp;L дашборда. Выключенная статья пропадает из формы, но остаётся в старых заявках и отчётах.</p>
+        <div id="a_groups">${BOOT.groups.map(g => `
+          <div class="grp-block"><div class="art-row"><input class="inp" style="font-weight:600" data-g="${g.id}" value="${esc(g.name)}"><span class="t-sub">${g.articles.filter(a=>a.is_active).length} статей</span></div>
+            ${g.articles.map(a => `<div class="art-row ${a.is_active?"":"off"}"><input class="inp" data-a="${a.id}" data-gid="${g.id}" value="${esc(a.name)}"><input class="inp" data-ah="${a.id}" value="${esc(a.hint||"")}" placeholder="Подсказка"><button class="btn ghost" data-toggle="${a.id}" data-on="${a.is_active}">${a.is_active?"Выключить":"Включить"}</button></div>`).join("")}
+            <div class="art-row"><input class="inp" data-new="${g.id}" placeholder="+ Новая статья в группе «${esc(g.name)}»"><button class="btn" data-add="${g.id}">Добавить</button></div>
+          </div>`).join("")}</div></section>
+      <section class="box"><h3>Сотрудники и пароли</h3><p class="hint">Чтобы сотрудник вошёл впервые, задайте ему временный пароль (от 8 символов) и передайте лично. При первом входе система попросит придумать свой. Если сотрудник забыл пароль, задайте новый временный.</p>
+        <div style="overflow-x:auto"><table class="users-tbl"><thead><tr><th>Имя</th><th>Email для входа</th><th>Админ</th><th>Доступ</th><th>Пароль</th><th>Временный пароль</th><th>Был(а)</th><th></th></tr></thead><tbody>
+          <tr data-u="new"><td><input class="inp" data-f="name" placeholder="Имя Фамилия"></td><td><input class="inp" data-f="login" type="email" placeholder="email"></td><td><input type="checkbox" data-f="is_admin"></td><td><input type="checkbox" data-f="is_active" checked disabled></td><td></td><td></td><td></td><td><button class="btn primary" data-usave="new">Добавить</button></td></tr>
+          ${users.map(u => `<tr data-u="${u.id}"><td><input class="inp" data-f="name" value="${esc(u.name)}"></td><td><input class="inp" data-f="login" type="email" value="${esc(u.login||"")}" placeholder="нет email — вход невозможен"></td><td><input type="checkbox" data-f="is_admin" ${u.is_admin?"checked":""}></td><td><input type="checkbox" data-f="is_active" ${u.is_active?"checked":""}></td>
+            <td>${!u.has_password ? `<span class="pw-state none">не задан</span>` : u.must_change ? `<span class="pw-state temp">временный</span>` : `<span class="pw-state ok">свой</span>`}</td>
+            <td><div class="pw-set"><input class="inp" data-pw="${u.id}" type="text" autocomplete="off" placeholder="от 8 символов"><button class="btn" data-pwset="${u.id}">Задать</button></div></td>
+            <td class="t-sub">${u.last_seen?dshort(u.last_seen):"—"}</td><td><button class="btn" data-usave="${u.id}">Сохранить</button></td></tr>`).join("")}
+        </tbody></table></div></section>
+    </div>`;
+  const adm = async (action, p, ok) => { try { await api("pay_admin", {p_action: action, p}); toast(ok); } catch(e) { toast(e.message, true); } };
+  m.querySelectorAll("[data-role]").forEach(s => s.onchange = () => adm("route_set", {role: s.dataset.role, user_id: s.value || null}, "Маршрут обновлён"));
+  m.querySelectorAll("[data-g]").forEach(i => i.onchange = () => adm("group_save", {id: i.dataset.g, name: i.value}, "Группа переименована"));
+  m.querySelectorAll("[data-a]").forEach(i => i.onchange = () => adm("article_save", {id: i.dataset.a, name: i.value, hint: m.querySelector(`[data-ah="${i.dataset.a}"]`).value}, "Статья сохранена"));
+  m.querySelectorAll("[data-ah]").forEach(i => i.onchange = () => adm("article_save", {id: i.dataset.ah, name: m.querySelector(`[data-a="${i.dataset.ah}"]`).value, hint: i.value}, "Подсказка сохранена"));
+  m.querySelectorAll("[data-toggle]").forEach(b => b.onclick = async () => { const a = m.querySelector(`[data-a="${b.dataset.toggle}"]`); await adm("article_save", {id: b.dataset.toggle, name: a.value, hint: m.querySelector(`[data-ah="${b.dataset.toggle}"]`).value, is_active: b.dataset.on !== "true"}, "Готово"); renderAdmin(m); });
+  m.querySelectorAll("[data-add]").forEach(b => b.onclick = async () => { const i = m.querySelector(`[data-new="${b.dataset.add}"]`); if (!i.value.trim()) return; await adm("article_save", {group_id: b.dataset.add, name: i.value}, "Статья добавлена"); renderAdmin(m); });
+  m.querySelectorAll("[data-usave]").forEach(b => b.onclick = async () => {
+    const tr = b.closest("tr"), v = f => tr.querySelector(`[data-f="${f}"]`);
+    const p = {id: b.dataset.usave === "new" ? null : b.dataset.usave, name: v("name").value, login: v("login").value, is_admin: v("is_admin").checked, is_active: v("is_active").checked};
+    if (!p.name.trim() || !p.login.trim()) { toast("Укажите имя и email", true); return; }
+    await adm("user_save", p, b.dataset.usave === "new" ? "Сотрудник добавлен. Задайте ему временный пароль." : "Сотрудник сохранён");
+    if (b.dataset.usave === "new") renderAdmin(m);
+  });
+  m.querySelectorAll("[data-pwset]").forEach(b => b.onclick = async () => {
+    const i = m.querySelector(`[data-pw="${b.dataset.pwset}"]`);
+    if (i.value.length < 8) { toast("Временный пароль: не короче 8 символов", true); return; }
+    try { await api("pay_admin", {p_action:"set_password", p:{id: b.dataset.pwset, password: i.value}}); toast("Временный пароль задан. Передайте его сотруднику лично."); renderAdmin(m); }
+    catch(e) { toast(e.message, true); }
+  });
+}
+
+/* ---------- старт ---------- */
+if (TOKEN) start(); else showLogin();
+</script>
+</body>
+</html>
