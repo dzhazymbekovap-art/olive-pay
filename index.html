@@ -290,7 +290,7 @@ async function rpc(fn, args = {}) {
   if (!r.ok) {
     const msg = (j && j.message) || txt || "Ошибка сервера";
     if (msg === "AUTH") { logout(true); throw new Error("Сессия истекла, войдите снова"); }
-    throw new Error(msg === "NOT_FOUND" ? "Заявка не найдена или нет доступа" : msg);
+    throw new Error(msg === "NOT_FOUND" ? "Заявка не найдена или нет доступа" : /duplicate key|unique/i.test(msg) ? "Такое название уже есть, выберите другое" : msg);
   }
   return j;
 }
@@ -708,12 +708,22 @@ async function renderAdmin(m){
     <div class="adm">
       <section class="box"><h3>Маршрут согласования</h3><p class="hint">Кто получает заявки на каждом шаге. Этому человеку приходит уведомление в колокольчик, а заявка появляется во вкладке «Ждут меня».</p>
         <div class="route-set">${BOOT.route.map(r => `<label class="f"><span>${esc(r.title)}</span><select class="inp" data-role="${r.role}">${userOpts(r.user_id)}</select></label>`).join("")}</div></section>
-      <section class="box"><h3>Статьи расходов</h3><p class="hint">Группа соответствует статье в P&amp;L дашборда. Выключенная статья пропадает из формы, но остаётся в старых заявках и отчётах.</p>
+      <section class="box" id="artBox"><h3>Статьи расходов</h3><p class="hint">Исправьте название, подсказку или группу и нажмите «Сохранить» в строке. «Выключить» убирает статью из формы заявки, но сохраняет её в старых заявках и отчётах. «Удалить» убирает статью совсем; если по ней уже были заявки, её можно только выключить.</p>
         <div id="a_groups">${BOOT.groups.map(g => `
-          <div class="grp-block"><div class="art-row"><input class="inp" style="font-weight:600" data-g="${g.id}" value="${esc(g.name)}"><span class="t-sub">${g.articles.filter(a=>a.is_active).length} статей</span></div>
-            ${g.articles.map(a => `<div class="art-row ${a.is_active?"":"off"}"><input class="inp" data-a="${a.id}" data-gid="${g.id}" value="${esc(a.name)}"><input class="inp" data-ah="${a.id}" value="${esc(a.hint||"")}" placeholder="Подсказка"><button class="btn ghost" data-toggle="${a.id}" data-on="${a.is_active}">${a.is_active?"Выключить":"Включить"}</button></div>`).join("")}
+          <div class="grp-block" data-grp="${g.id}">
+            <div class="art-row"><input class="inp" style="font-weight:600" data-gname="${g.id}" value="${esc(g.name)}" data-orig="${esc(g.name)}"><button class="btn primary" data-gsave="${g.id}" hidden>Сохранить</button><span class="t-sub">${g.articles.filter(a=>a.is_active).length} из ${g.articles.length} включены</span>${g.articles.length ? "" : `<button class="btn ghost" data-grm="${g.id}">Удалить группу</button>`}</div>
+            ${g.articles.map(a => `<div class="art-row ${a.is_active?"":"off"}" data-art="${a.id}">
+              <input class="inp" data-f="name" value="${esc(a.name)}" data-orig="${esc(a.name)}" aria-label="Название статьи">
+              <input class="inp" data-f="hint" value="${esc(a.hint||"")}" data-orig="${esc(a.hint||"")}" placeholder="Подсказка для сотрудников" aria-label="Подсказка">
+              <select class="inp" data-f="group" data-orig="${g.id}" style="flex:0 1 200px" aria-label="Группа">${BOOT.groups.map(x => `<option value="${x.id}" ${x.id===g.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
+              <button class="btn primary" data-asave="${a.id}" hidden>Сохранить</button>
+              <button class="btn ghost" data-atoggle="${a.id}" data-active="${a.is_active}">${a.is_active?"Выключить":"Включить"}</button>
+              ${a.used ? `<span class="t-sub" title="По статье есть заявки">есть заявки</span>` : `<button class="btn ghost" data-arm="${a.id}" style="color:var(--red)">Удалить</button>`}
+            </div>`).join("")}
             <div class="art-row"><input class="inp" data-new="${g.id}" placeholder="+ Новая статья в группе «${esc(g.name)}»"><button class="btn" data-add="${g.id}">Добавить</button></div>
-          </div>`).join("")}</div></section>
+          </div>`).join("")}
+          <div class="grp-block"><div class="art-row"><input class="inp" id="newGroup" placeholder="+ Новая группа расходов"><button class="btn" id="addGroup">Добавить группу</button></div></div>
+        </div></section>
       <section class="box" id="usersBox"><h3>Сотрудники и пароли</h3>
         <p class="hint">Изменить имя или email: исправьте в строке и нажмите «Сохранить». Новый email сразу станет логином, пароль не меняется.<br>
         Первый вход: задайте временный пароль (от 8 символов) и передайте лично, при входе сотрудник заменит его на свой. Забытый пароль: задайте новый временный.<br>
@@ -729,11 +739,42 @@ async function renderAdmin(m){
     </div>`;
   const adm = async (action, p, ok) => { try { await api("pay_admin", {p_action: action, p}); toast(ok); } catch(e) { toast(e.message, true); } };
   m.querySelectorAll("[data-role]").forEach(s => s.onchange = () => adm("route_set", {role: s.dataset.role, user_id: s.value || null}, "Маршрут обновлён"));
-  m.querySelectorAll("[data-g]").forEach(i => i.onchange = () => adm("group_save", {id: i.dataset.g, name: i.value}, "Группа переименована"));
-  m.querySelectorAll("[data-a]").forEach(i => i.onchange = () => adm("article_save", {id: i.dataset.a, name: i.value, hint: m.querySelector(`[data-ah="${i.dataset.a}"]`).value}, "Статья сохранена"));
-  m.querySelectorAll("[data-ah]").forEach(i => i.onchange = () => adm("article_save", {id: i.dataset.ah, name: m.querySelector(`[data-a="${i.dataset.ah}"]`).value, hint: i.value}, "Подсказка сохранена"));
-  m.querySelectorAll("[data-toggle]").forEach(b => b.onclick = async () => { const a = m.querySelector(`[data-a="${b.dataset.toggle}"]`); await adm("article_save", {id: b.dataset.toggle, name: a.value, hint: m.querySelector(`[data-ah="${b.dataset.toggle}"]`).value, is_active: b.dataset.on !== "true"}, "Готово"); renderAdmin(m); });
-  m.querySelectorAll("[data-add]").forEach(b => b.onclick = async () => { const i = m.querySelector(`[data-new="${b.dataset.add}"]`); if (!i.value.trim()) return; await adm("article_save", {group_id: b.dataset.add, name: i.value}, "Статья добавлена"); renderAdmin(m); });
+  const admOk = async (fn, args, ok) => { try { await api(fn, args); toast(ok); return true; } catch(e) { toast(e.message, true); return false; } };
+  /* группы */
+  m.querySelectorAll("[data-gname]").forEach(i => i.oninput = () => { m.querySelector(`[data-gsave="${i.dataset.gname}"]`).hidden = i.value === i.dataset.orig; });
+  m.querySelectorAll("[data-gsave]").forEach(b => b.onclick = async () => {
+    const i = m.querySelector(`[data-gname="${b.dataset.gsave}"]`); if (!i.value.trim()) { toast("Название группы не может быть пустым", true); return; }
+    if (await admOk("pay_admin", {p_action:"group_save", p:{id: b.dataset.gsave, name: i.value}}, "Группа сохранена")) renderAdmin(m);
+  });
+  m.querySelectorAll("[data-grm]").forEach(b => b.onclick = async () => {
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Точно удалить группу?"; b.style.color = "var(--red)"; return; }
+    if (await admOk("pay_admin_group_remove", {p_id: +b.dataset.grm}, "Группа удалена")) renderAdmin(m);
+  });
+  $("#addGroup").onclick = async () => { const i = $("#newGroup"); if (!i.value.trim()) return;
+    if (await admOk("pay_admin", {p_action:"group_save", p:{name: i.value}}, "Группа добавлена")) renderAdmin(m); };
+  /* статьи */
+  m.querySelectorAll("[data-art]").forEach(row => {
+    const btn = row.querySelector("[data-asave]");
+    const dirty = () => [...row.querySelectorAll("[data-orig]")].some(el => el.value !== el.dataset.orig);
+    row.querySelectorAll("[data-orig]").forEach(el => el.oninput = el.onchange = () => { btn.hidden = !dirty(); });
+    const f = k => row.querySelector(`[data-f="${k}"]`).value;
+    btn.onclick = async () => { if (!f("name").trim()) { toast("Название статьи не может быть пустым", true); return; }
+      if (await admOk("pay_admin", {p_action:"article_save", p:{id: row.dataset.art, name: f("name"), hint: f("hint"), group_id: f("group")}}, "Статья сохранена")) renderAdmin(m); };
+    row.querySelectorAll("input[data-f]").forEach(el => el.onkeydown = e => { if (e.key === "Enter" && !btn.hidden) btn.click(); });
+  });
+  m.querySelectorAll("[data-atoggle]").forEach(b => b.onclick = async () => {
+    const row = b.closest("[data-art]"), f = k => row.querySelector(`[data-f="${k}"]`);
+    const on = b.dataset.active !== "true";
+    if (await admOk("pay_admin", {p_action:"article_save", p:{id: row.dataset.art, name: f("name").dataset.orig, hint: f("hint").dataset.orig, is_active: on}}, on ? "Статья включена" : "Статья выключена")) renderAdmin(m);
+  });
+  m.querySelectorAll("[data-arm]").forEach(b => b.onclick = async () => {
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Точно удалить?"; return; }
+    if (await admOk("pay_admin_article_remove", {p_id: +b.dataset.arm}, "Статья удалена")) renderAdmin(m);
+  });
+  m.querySelectorAll("[data-add]").forEach(b => b.onclick = async () => { const i = m.querySelector(`[data-new="${b.dataset.add}"]`); if (!i.value.trim()) return;
+    if (await admOk("pay_admin", {p_action:"article_save", p:{group_id: b.dataset.add, name: i.value}}, "Статья добавлена")) renderAdmin(m); });
+  m.querySelectorAll("[data-new]").forEach(i => i.onkeydown = e => { if (e.key === "Enter") m.querySelector(`[data-add="${i.dataset.new}"]`).click(); });
+  $("#newGroup").onkeydown = e => { if (e.key === "Enter") $("#addGroup").click(); };
   m.querySelectorAll("[data-usave]").forEach(b => b.onclick = async () => {
     const tr = b.closest("tr"), v = f => tr.querySelector(`[data-f="${f}"]`);
     const p = {id: b.dataset.usave === "new" ? null : b.dataset.usave, name: v("name").value, login: v("login").value, is_admin: v("is_admin").checked, is_active: true};
