@@ -191,6 +191,7 @@ table.rep tr.tot td{font-weight:700;border-top:2px solid var(--ink)}
 
 .bell{position:relative;font-size:17px;padding:6px 10px}
 .bell .badge{position:absolute;top:0;right:0}
+#e_files.need{border-color:var(--red);box-shadow:0 0 0 1px var(--red)}
 .notif-list{display:flex;flex-direction:column;gap:6px}
 .notif{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;cursor:pointer;font-size:14px}
 .notif.unread{border-color:var(--olive);box-shadow:inset 3px 0 0 var(--olive)}
@@ -264,7 +265,7 @@ const STATUS = {
   draft:{t:"Черновик"}, ops_review:{t:"У операционного директора"}, md_review:{t:"У управляющего директора"},
   accounting:{t:"В бухгалтерии"}, paid:{t:"Оплачено"}, rejected:{t:"Отклонено"}, cancelled:{t:"Отозвано"}
 };
-const PTYPE = {cash:"Наличные", invoice:"Счёт на оплату (безнал)", card_transfer:"Перевод на карту", corp_card:"Корпоративная карта", reimbursement:"Возмещение сотруднику"};
+const PTYPE = {cash:"Наличные", invoice:"Счёт на оплату (безнал)", corp_card:"Корпоративная карта"};
 const ROLE_T = {ops_director:"Операционный директор", managing_director:"Управляющий директор", accountant:"Бухгалтерия"};
 const ACTION_T = {created:"Создал(а) черновик", submitted:"Отправил(а) на согласование", approved:"Согласовал(а)", rejected:"Отклонил(а)", paid:"Отметил(а) оплату", cancelled:"Отозвал(а) заявку"};
 
@@ -492,17 +493,16 @@ function openEditor(req){
         <label class="f"><span>Сумма, ₸ <b>*</b></span><input class="inp num" id="e_amount" inputmode="decimal" value="${r.amount ?? ""}" placeholder="0"></label>
         <label class="f"><span>Тип платежа <b>*</b></span><select class="inp" id="e_ptype"><option value="">Выберите</option>${Object.entries(PTYPE).map(([k,t]) => `<option value="${k}" ${r.payment_type===k?"selected":""}>${t}</option>`).join("")}</select></label>
         <label class="f"><span>Получатель</span><input class="inp" id="e_cp" value="${esc(r.counterparty)}" placeholder="Компания или ФИО"></label>
-        <label class="f"><span>№ счёта / договора</span><input class="inp" id="e_inv" value="${esc(r.invoice_no)}"></label>
         <label class="f"><span>Оплатить до</span><input class="inp" id="e_until" type="date" value="${r.pay_until || ""}"></label>
         <label class="f"><span>Месяц расхода</span><input class="inp" id="e_month" type="month" value="${month}"></label>
         <label class="f full"><span>Описание и обоснование</span><textarea class="inp" id="e_desc" placeholder="Что покупаем, зачем, за какой период">${esc(r.description)}</textarea></label>
-        <label class="f full"><span>Ссылка на служебную записку или счёт</span><input class="inp" id="e_link" type="url" value="${esc(r.doc_link)}" placeholder="https://… (Google Drive, Яндекс Диск)"></label>
+        <label class="f full"><span>Ссылка на документ (необязательно, в дополнение к файлу)</span><input class="inp" id="e_link" type="url" value="${esc(r.doc_link)}" placeholder="https://… (Google Drive, Яндекс Диск)"></label>
         <div class="full box" id="e_files"></div>
       </div>
       <div class="err" id="e_err" hidden></div>
     </form>
     <div class="drawer-foot"><button class="btn" id="e_save">Сохранить черновик</button><div class="spacer"></div><button class="btn primary" id="e_submit">Отправить на согласование</button></div>`);
-  let reqId = r.id || null;
+  let reqId = r.id || null, fileCount = (req?.files || []).length;
   const gs = $("#e_group"), as = $("#e_article");
   if (r.article_id) as.value = r.article_id;
   const showHint = () => { const f = articleById(+as.value); $("#e_hint").textContent = f?.a.hint || ""; };
@@ -513,7 +513,7 @@ function openEditor(req){
   const payload = () => ({
     id: reqId, title: $("#e_title").value, description: $("#e_desc").value,
     amount: $("#e_amount").value.replace(/\s/g,"").replace(",", "."), payment_type: $("#e_ptype").value,
-    article_id: as.value, counterparty: $("#e_cp").value, invoice_no: $("#e_inv").value,
+    article_id: as.value, counterparty: $("#e_cp").value,
     pay_until: $("#e_until").value, expense_month: $("#e_month").value ? $("#e_month").value + "-01" : "", doc_link: $("#e_link").value
   });
   async function save(){
@@ -532,7 +532,9 @@ function openEditor(req){
   };
   $("#e_submit").onclick = async () => {
     busy(true);
-    try { await save(); await api("pay_submit", {p_id: reqId}); toast("Заявка отправлена операционному директору"); closeOverlay(); refresh(); }
+    try {
+      if (!fileCount) { $("#e_files").classList.add("need"); throw new Error("Прикрепите файл служебной записки или счёта. Без файла заявку отправить нельзя."); }
+      await save(); await api("pay_submit", {p_id: reqId}); toast("Заявка отправлена операционному директору"); closeOverlay(); refresh(); }
     catch(e) { $("#e_err").textContent = e.message; $("#e_err").hidden = false; renderEdFiles(reqId, (await api("pay_get", {p_id:reqId}).catch(()=>({files:[]}))).files); }
     busy(false);
   };
@@ -540,8 +542,9 @@ function openEditor(req){
 
   function renderEdFiles(id, files){
     const box = $("#e_files"); if (!box) return;
-    box.innerHTML = `<p class="sec-t">Файлы: служебная записка, счёт</p>
-      <div class="files">${files.map(f => `<div class="file"><span>📎 ${esc(f.name)}</span><span class="t-sub">${(f.size/1024).toFixed(0)} КБ</span></div>`).join("") || `<div class="hint">${id ? "Файлов пока нет." : "Файл можно прикрепить сразу: черновик сохранится автоматически."}</div>`}</div>
+    fileCount = files.length; if (fileCount) box.classList.remove("need");
+    box.innerHTML = `<p class="sec-t">Служебная записка или счёт <b style="color:var(--red)">*</b></p>
+      <div class="files">${files.map(f => `<div class="file"><span>📎 ${esc(f.name)}</span><span class="t-sub">${(f.size/1024).toFixed(0)} КБ</span></div>`).join("") || `<div class="hint">Обязательно прикрепите хотя бы один файл: без него заявка не отправится. Черновик при этом сохранится автоматически.</div>`}</div>
       <div style="margin-top:8px"><label class="btn" for="e_file">Прикрепить файл</label><input id="e_file" type="file" hidden></div>`;
     $("#e_file").onchange = async ev => {
       const file = ev.target.files[0]; if (!file) return;
@@ -610,7 +613,6 @@ async function openDetail(id){
         <dt>Статья расходов</dt><dd>${esc(x.group_name || "—")} / <b>${esc(x.article_name || "—")}</b></dd>
         <dt>Автор</dt><dd>${esc(x.author_name)}</dd>
         <dt>Получатель</dt><dd>${esc(x.counterparty || "—")}</dd>
-        <dt>№ счёта / договора</dt><dd>${esc(x.invoice_no || "—")}</dd>
         <dt>Оплатить до</dt><dd>${x.pay_until ? dshort(x.pay_until) : "—"}</dd>
         <dt>Месяц расхода</dt><dd>${monthT(x.expense_month)}</dd>
         <dt>Описание</dt><dd style="white-space:pre-wrap">${esc(x.description || "—")}</dd>
