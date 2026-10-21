@@ -363,11 +363,11 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 
 const STATUS = {
   draft:{t:"Черновик"}, ops_review:{t:"У операционного директора"}, md_review:{t:"У управляющего директора"},
-  accounting:{t:"В бухгалтерии"}, paid:{t:"Оплачено"}, rejected:{t:"Отклонено"}, cancelled:{t:"Отозвано"}
+  accounting:{t:"В бухгалтерии"}, paid:{t:"Оплачено"}, rejected:{t:"Отклонено"}, cancelled:{t:"Отклонено автором"}
 };
 const PTYPE = {cash:"Наличные", invoice:"Счёт на оплату (безнал)", corp_card:"Корпоративная карта"};
 const ROLE_T = {ops_director:"Операционный директор", managing_director:"Управляющий директор", accountant:"Бухгалтерия"};
-const ACTION_T = {created:"Создал(а) черновик", submitted:"Отправил(а) на согласование", approved:"Согласовал(а)", rejected:"Отклонил(а)", paid:"Отметил(а) оплату", cancelled:"Отозвал(а) заявку"};
+const ACTION_T = {created:"Создал(а) черновик", submitted:"Отправил(а) на согласование", approved:"Согласовал(а)", rejected:"Отклонил(а)", paid:"Отметил(а) оплату", cancelled:"Отклонил(а) свою заявку"};
 
 let TOKEN = null, BOOT = null, LIST = [], VIEW = "mine", FILTER = {status:null, q:""}, LAYOUT = "kanban";
 try { LAYOUT = localStorage.getItem("olive_pay_layout") || "kanban"; } catch(e) {}
@@ -563,7 +563,7 @@ function ageHtml(x){
 function boardHtml(items){
   const cols = [
     ["draft","Черновик"], ["ops_review","Согласование: операционный директор"], ["md_review","Согласование: управляющий директор"],
-    ["accounting","Бухгалтерия"], ["paid","Оплачено"], ["rejected","Отклонено"], ["cancelled","Отозвано"]
+    ["accounting","Бухгалтерия"], ["paid","Оплачено"], ["rejected","Отклонено"], ["cancelled","Отклонено автором"]
   ].filter(([s]) => !(VIEW === "inbox" && (s === "draft" || s === "paid" || s === "rejected" || s === "cancelled")))
    .filter(([s]) => s !== "cancelled" || items.some(x => x.status === "cancelled"));
   const dfull = d => d ? new Date(d).toLocaleDateString("ru-RU", {day:"numeric", month:"long", year:"numeric"}) : "—";
@@ -805,7 +805,7 @@ async function openDetail(id){
     <div class="drawer-foot">
       ${can.edit ? `<button class="btn" id="a_edit">Редактировать</button>` : ""}
       ${can.copy ? `<button class="btn" id="a_copy">Создать копию</button>` : ""}
-      ${can.cancel ? `<button class="btn ghost" id="a_cancel">Отозвать</button>` : ""}
+      ${can.cancel && !can.decide ? `<button class="btn bad" id="a_cancel">Отклонить</button>` : ""}
       <div class="spacer"></div>
       ${can.decide ? `<button class="btn bad" id="a_reject">Отклонить</button><button class="btn good" id="a_approve">Согласовать</button>` : ""}
       ${can.pay ? `<button class="btn good" id="a_paid">Оплачено</button>` : ""}
@@ -825,7 +825,7 @@ async function openDetail(id){
   });
   if ($("#a_edit")) $("#a_edit").onclick = () => openEditor(x);
   if ($("#a_copy")) $("#a_copy").onclick = async () => { try { const r = await api("pay_copy", {p_id: x.id}); const c = await api("pay_get", {p_id: r.id}); refresh(); openEditor(c); } catch(e) { toast(e.message, true); } };
-  if ($("#a_cancel")) $("#a_cancel").onclick = () => act(() => api("pay_cancel", {p_id: x.id, p_comment: null}), "Заявка отозвана");
+  if ($("#a_cancel")) $("#a_cancel").onclick = () => act(() => api("pay_cancel", {p_id: x.id, p_comment: null}), "Заявка отклонена");
   if ($("#a_submit")) $("#a_submit").onclick = () => act(() => api("pay_submit", {p_id: x.id}), "Заявка отправлена на согласование");
   if ($("#a_approve")) $("#a_approve").onclick = () => act(() => api("pay_decide", {p_id: x.id, p_approve: true, p_comment: $("#d_comment").value || null}), "Согласовано");
   if ($("#a_reject")) $("#a_reject").onclick = () => act(() => api("pay_decide", {p_id: x.id, p_approve: false, p_comment: $("#d_comment").value}), "Заявка отклонена, автор получит уведомление");
