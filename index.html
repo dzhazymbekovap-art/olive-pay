@@ -11,8 +11,8 @@
 :root{
   --bg:#eef2f4; --surface:#ffffff; --sunken:#f5f7f8; --line:#dfe3e7; --line2:#c6cdd3;
   --ink:#333333; --text2:#535c69; --muted:#828b95;
-  --accent:#2fc6f6; --accent-hover:#3eddff; --accent-ink:#ffffff; --accent-soft:#e5f8fe;
-  --link:#2067b0;
+  --accent:#4caf50; --accent-hover:#5cbf60; --accent-ink:#ffffff; --accent-soft:#e8f5e9;
+  --link:#2e7d32;
   --success:#bbed21; --success-hover:#d2f95f; --success-ink:#535c69;
   --danger:#ff5752; --danger-soft:#ffe8e7;
   --side:#1e2d3b; --side-ink:#ffffff; --side-muted:rgba(255,255,255,.62); --side-active:rgba(255,255,255,.16);
@@ -29,8 +29,8 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#1c2127; --surface:#262c33; --sunken:#2d343c; --line:#3a424b; --line2:#4b545e;
   --ink:#e8ebee; --text2:#c5ccd3; --muted:#8e98a3;
-  --accent:#2fc6f6; --accent-hover:#5ad4f8; --accent-ink:#0f1a20; --accent-soft:#1b3a47;
-  --link:#6fb3ff; --success:#bbed21; --success-hover:#d2f95f; --success-ink:#26300a;
+  --accent:#5cbf60; --accent-hover:#72cc75; --accent-ink:#0f1a10; --accent-soft:#1d3a20;
+  --link:#81c784; --success:#bbed21; --success-hover:#d2f95f; --success-ink:#26300a;
   --danger:#ff6b66; --danger-soft:#4a2423;
   --side:#121820; --side-active:rgba(255,255,255,.12);
   --red:#ff7b76; --green:#9ad94a; --green-soft:#2a3a17; --amber:#f0c04a; --amber-soft:#3d3214; --blue-soft:#1d3047; --grey-soft:#30373f;
@@ -39,8 +39,8 @@
 :root[data-theme="dark"]{
   --bg:#1c2127; --surface:#262c33; --sunken:#2d343c; --line:#3a424b; --line2:#4b545e;
   --ink:#e8ebee; --text2:#c5ccd3; --muted:#8e98a3;
-  --accent:#2fc6f6; --accent-hover:#5ad4f8; --accent-ink:#0f1a20; --accent-soft:#1b3a47;
-  --link:#6fb3ff; --success:#bbed21; --success-hover:#d2f95f; --success-ink:#26300a;
+  --accent:#5cbf60; --accent-hover:#72cc75; --accent-ink:#0f1a10; --accent-soft:#1d3a20;
+  --link:#81c784; --success:#bbed21; --success-hover:#d2f95f; --success-ink:#26300a;
   --danger:#ff6b66; --danger-soft:#4a2423;
   --side:#121820; --side-active:rgba(255,255,255,.12);
   --red:#ff7b76; --green:#9ad94a; --green-soft:#2a3a17; --amber:#f0c04a; --amber-soft:#3d3214; --blue-soft:#1d3047; --grey-soft:#30373f;
@@ -81,7 +81,7 @@ textarea.inp{height:auto;min-height:86px;padding:9px 11px;resize:vertical}
 .err{color:var(--red);font-size:13px;background:var(--danger-soft);padding:8px 12px;border-radius:2px}
 
 /* ---------- вход ---------- */
-#login{min-height:100vh;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left));background:linear-gradient(160deg,var(--side) 0%,#25506b 55%,#2fa7cf 100%)}
+#login{min-height:100vh;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left));background:linear-gradient(160deg,var(--side) 0%,#2c5a33 55%,#4caf50 100%)}
 .login-card{width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px;background:var(--surface);padding:32px 30px;border-radius:12px;box-shadow:var(--shadow)}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
 .brand i{width:28px;height:28px;border-radius:50%;background:var(--accent);display:inline-block;position:relative;flex:none}
