@@ -115,6 +115,8 @@ header.top .spacer{flex:1}
 .bell:hover{background:var(--line)}
 .bell .badge{position:absolute;top:-3px;right:-4px}
 .mob-only{display:none}
+.fab{display:none}
+nav.tabs .t-short{display:none}
 
 main{padding:18px max(16px,env(safe-area-inset-right)) 60px 24px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .view-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -284,7 +286,7 @@ table.rep tr.tot td{font-weight:700;border-top:2px solid var(--text2)}
 .loading{opacity:.6;pointer-events:none}
 @media (prefers-reduced-motion:no-preference){.drawer{animation:slide .2s ease-out}@keyframes slide{from{transform:translateX(-40px);opacity:.3}}}
 
-/* ---------- узкий экран: меню сверху ---------- */
+/* ---------- планшет: меню сверху ---------- */
 @media (max-width:900px){
   #app{grid-template-columns:minmax(0,1fr)}
   .side{position:sticky;top:0;z-index:6;height:auto;flex-direction:row;align-items:center;gap:6px;overflow-x:auto;padding:8px max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));padding-top:max(8px,env(safe-area-inset-top))}
@@ -292,13 +294,103 @@ table.rep tr.tot td{font-weight:700;border-top:2px solid var(--text2)}
   nav.tabs{flex-direction:row}
   nav.tabs button{padding:7px 12px;font-size:13px}
   .side-foot{display:none}
-  .mob-only{display:inline-flex}
+  .mob-only{display:inline-grid}
   header.top{position:static;padding-left:max(16px,env(safe-area-inset-left))}
-  header.top{flex-wrap:nowrap;gap:10px}
-  header.top h1{font-size:19px;overflow:hidden;text-overflow:ellipsis;min-width:0}
-  header.top .btn.create{padding:0 12px}
   main{padding-left:max(16px,env(safe-area-inset-left))}
-  .col{flex-basis:80vw}
+}
+
+/* ---------- телефон: нижнее меню, кнопка «+», карточки ---------- */
+@media (max-width:720px){
+  body{font-size:15px}
+  .inp,select.inp,textarea.inp{font-size:16px}           /* без автоувеличения на iPhone */
+  .inp{height:44px}
+  .btn{height:42px}
+
+  /* нижнее меню как в приложении */
+  .side{position:fixed;top:auto;bottom:0;left:0;right:0;z-index:15;justify-content:space-around;gap:0;overflow:visible;
+        padding:6px max(4px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left));
+        box-shadow:0 -2px 12px rgba(0,0,0,.18)}
+  .side .brand{display:none}
+  nav.tabs{flex:1;justify-content:space-around;gap:0}
+  nav.tabs button{flex:1;flex-direction:column;gap:3px;padding:6px 2px;border-radius:10px;font-size:11px;position:relative;min-width:0;align-items:center}
+  nav.tabs button .i{width:22px;height:22px}
+  nav.tabs .t-full{display:none}
+  nav.tabs .t-short{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  nav.tabs button .badge{position:absolute;top:1px;left:calc(50% + 6px);margin:0}
+  nav.tabs button.on{background:transparent;color:var(--accent)}
+  .work{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
+
+  /* шапка */
+  header.top{position:sticky;top:0;z-index:5;flex-wrap:nowrap;gap:8px;padding:10px max(12px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));padding-top:max(10px,env(safe-area-inset-top))}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+  header.top h1{font-size:19px;font-weight:600;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+  header.top .spacer{display:none}
+  #newBtn{display:none}
+  .fab{display:grid;place-items:center;position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(84px + env(safe-area-inset-bottom));z-index:14;width:56px;height:56px;border-radius:50%;border:0;background:var(--success);color:var(--success-ink);box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer}
+  .fab .i{width:26px;height:26px;stroke-width:2.4}
+
+  main{padding:12px max(12px,env(safe-area-inset-right)) 24px max(12px,env(safe-area-inset-left));gap:12px}
+  .toolbar{gap:8px}
+  .toolbar .inp{max-width:none;flex:1 1 100%;order:-1}
+  .seg{width:100%}
+  .seg button{flex:1;height:36px}
+  .view-head p{font-size:12.5px}
+
+  /* этапы одной прокручиваемой строкой */
+  .stages{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:0 12px}
+  .stages::-webkit-scrollbar{display:none}
+  .stage{flex:none}
+
+  /* канбан: колонка на экран, листается пальцем */
+  .board{scroll-snap-type:x mandatory;margin:0 -12px;padding:0 12px 12px;gap:10px}
+  .col{flex:0 0 86vw;scroll-snap-align:start}
+  .col-body{border:0;padding:0}
+
+  /* карточки списка */
+  .card{padding:14px;gap:8px;border-radius:8px}
+  .card .t-title{font-size:15px}
+
+  /* панели во весь экран */
+  .drawer{width:100%}
+  .drawer-head{padding:14px 14px 10px max(16px,env(safe-area-inset-left));padding-top:max(14px,env(safe-area-inset-top));position:sticky;top:0}
+  .drawer-head h3{font-size:20px}
+  .drawer-body{padding:4px 12px 16px max(12px,env(safe-area-inset-left));gap:12px}
+  .drawer-body>.grid2,.drawer-body>dl.props,.drawer-body>.amt-block,.box{padding:14px;border-radius:10px}
+  .drawer-foot{padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));gap:8px}
+  .drawer-foot .spacer{display:none}
+  .drawer-foot .btn{flex:1 1 calc(50% - 4px)}
+  .big-amt{font-size:26px}
+
+  /* маршрут согласования вертикальным списком */
+  .route{flex-direction:column;flex-wrap:nowrap;gap:4px}
+  .route div,.route div:first-child{flex:none;clip-path:none;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;gap:10px;font-size:13px}
+  .route div b{font-size:13px}
+
+  ol.hist li{grid-template-columns:1fr;gap:2px}
+
+  /* настройки: строки статей и сотрудники карточками */
+  .art-row{gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .art-row .inp{flex:1 1 100%;min-width:0}
+  .art-row select.inp{flex:1 1 100% !important}
+  .art-row .btn{flex:1 1 auto}
+  .grp-block{gap:0}
+  .users-tbl{min-width:0}
+  .users-tbl thead{display:none}
+  .users-tbl,.users-tbl tbody,.users-tbl tr,.users-tbl td{display:block;width:100%}
+  .users-tbl tr{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--surface);position:relative}
+  .users-tbl tr.u-new{border-style:dashed}
+  .users-tbl td{border:0;padding:5px 0}
+  .users-tbl td[data-label]::before{content:attr(data-label);display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px}
+  .users-tbl td.u-empty{display:none}
+  .users-tbl td:first-child:not(.u-empty){position:absolute;top:10px;right:12px;width:auto;padding:0}
+  .users-tbl td.u-adm{display:flex;align-items:center;gap:8px}
+  .users-tbl td.u-adm::before{margin:0}
+  .pw-set{flex-wrap:nowrap}
+  .pw-set .inp{width:auto;min-width:0;flex:1 1 auto}
+  .u-act .pw-set .btn{flex:1}
+  .route-set{grid-template-columns:1fr}
+
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
 }
 </style>
 </head>
@@ -341,13 +433,14 @@ table.rep tr.tot td{font-weight:700;border-top:2px solid var(--text2)}
       <button id="logoutBtn">Выйти</button>
     </div>
   </aside>
+  <button class="fab" id="fabNew" aria-label="Создать заявку"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <div class="work">
     <header class="top">
       <h1 id="pageTitle">Платежи O-Live</h1>
       <button class="btn create" id="newBtn">+ Создать</button>
       <div class="spacer"></div>
       <button class="bell" id="bellBtn" aria-label="Уведомления"><svg class="i" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="badge" id="bellCount" hidden></span></button>
-      <button class="btn ghost mob-only" id="logoutBtnM">Выйти</button>
+      <button class="bell mob-only" id="profileBtnM" aria-label="Профиль"><svg class="i" viewBox="0 0 24 24"><path d="M4 20a8 8 0 0 1 16 0"/><circle cx="12" cy="8" r="4"/></svg></button>
     </header>
     <main id="main"></main>
   </div>
@@ -448,7 +541,14 @@ async function logout(silent){
   closeOverlay(); showLogin();
 }
 $("#logoutBtn").onclick = () => logout(false);
-$("#logoutBtnM").onclick = () => logout(false);
+$("#fabNew").onclick = () => openEditor(null);
+$("#profileBtnM").onclick = () => {
+  openOverlay(`<div class="drawer-head"><div class="grow"><div class="t-sub">Профиль</div><h3>${esc(BOOT.me.name)}</h3><div class="t-sub">${esc($("#meRole").textContent)}</div></div><button class="x" data-close aria-label="Закрыть">×</button></div>
+    <div class="drawer-body"><div class="box"><dl class="props"><dt>Email для входа</dt><dd>${esc(BOOT.me.login || "")}</dd></dl></div></div>
+    <div class="drawer-foot"><button class="btn" id="m_pw">Сменить пароль</button><button class="btn bad" id="m_out">Выйти</button></div>`);
+  $("#m_pw").onclick = () => { closeOverlay(); TEMP_PW = null; showPwForm(false); };
+  $("#m_out").onclick = () => logout(false);
+};
 
 /* ---------- уведомления ---------- */
 function setUnread(n){ const b = $("#bellCount"); b.textContent = n; b.hidden = !n; document.title = (n ? `(${n}) ` : "") + "Платежи O-Live"; }
@@ -508,7 +608,9 @@ function renderTabs(){
   };
   const titles = {mine:"Мои заявки", inbox:"Ждут меня", all:"O-Live | Платежи", report:"Отчёт по статьям", admin:"Настройки"};
   $("#pageTitle").textContent = titles[VIEW] || "Платежи O-Live";
-  $("#tabs").innerHTML = tabs.map(([k,t,n]) => `<button class="${VIEW===k?"on":""}" data-v="${k}"><svg class="i" viewBox="0 0 24 24">${ico[k]}</svg>${t}${n?`<span class="badge">${n}</span>`:""}</button>`).join("");
+  $("#fabNew").hidden = VIEW === "report" || VIEW === "admin";
+  const short = {mine:"Мои", inbox:"Ждут меня", all:"Все", report:"Отчёт", admin:"Настройки"};
+  $("#tabs").innerHTML = tabs.map(([k,t,n]) => `<button class="${VIEW===k?"on":""}" data-v="${k}" aria-label="${t}"><svg class="i" viewBox="0 0 24 24">${ico[k]}</svg><span class="t-full">${t}</span><span class="t-short">${short[k]}</span>${n?`<span class="badge">${n}</span>`:""}</button>`).join("");
   $("#tabs").querySelectorAll("button").forEach(b => b.onclick = () => go(b.dataset.v));
 }
 function go(v){ VIEW = v; FILTER = {status:null, q:""}; try { history.replaceState(null, "", "#" + v); } catch(e) {} refresh(); }
@@ -880,13 +982,13 @@ async function renderAdmin(m){
   const removeTitle = u => u.id === BOOT.me.id ? "Себя удалить нельзя" : u.in_route ? "Стоит в маршруте согласования" : u.in_use ? "Есть заявки или действия в истории: можно только отключить" : "Удалить из системы";
   const userRow = u => `<tr data-u="${u.id}">
       <td><input type="checkbox" class="u-pick" value="${u.id}" ${canRemove(u)?"":"disabled"} title="${removeTitle(u)}" aria-label="Выбрать ${esc(u.name)}"></td>
-      <td><input class="inp" data-f="name" value="${esc(u.name)}"></td>
-      <td><input class="inp" data-f="login" type="email" value="${esc(u.login||"")}" placeholder="укажите email"></td>
-      <td style="text-align:center"><input type="checkbox" data-f="is_admin" ${u.is_admin?"checked":""}></td>
-      <td>${pwState(u)}</td>
-      <td><div class="pw-set"><input class="inp" data-pw="${u.id}" type="text" autocomplete="off" placeholder="от 8 символов"><button class="btn" data-pwset="${u.id}">Задать</button></div></td>
-      <td class="t-sub">${u.last_seen?dshort(u.last_seen):"—"}</td>
-      <td><div class="pw-set"><button class="btn" data-usave="${u.id}">Сохранить</button>${u.id !== BOOT.me.id ? `<button class="btn ghost" data-off="${u.id}">Отключить</button>` : ""}</div></td></tr>`;
+      <td data-label="Имя"><input class="inp" data-f="name" value="${esc(u.name)}"></td>
+      <td data-label="Email для входа"><input class="inp" data-f="login" type="email" value="${esc(u.login||"")}" placeholder="укажите email"></td>
+      <td data-label="Администратор" class="u-adm"><input type="checkbox" data-f="is_admin" ${u.is_admin?"checked":""}></td>
+      <td data-label="Пароль">${pwState(u)}</td>
+      <td data-label="Временный пароль"><div class="pw-set"><input class="inp" data-pw="${u.id}" type="text" autocomplete="off" placeholder="от 8 символов"><button class="btn" data-pwset="${u.id}">Задать</button></div></td>
+      <td data-label="Был(а)" class="t-sub">${u.last_seen?dshort(u.last_seen):"—"}</td>
+      <td class="u-act"><div class="pw-set"><button class="btn" data-usave="${u.id}">Сохранить</button>${u.id !== BOOT.me.id ? `<button class="btn ghost" data-off="${u.id}">Отключить</button>` : ""}</div></td></tr>`;
   const userOpts = sel => `<option value="">Не назначен</option>` + users.filter(u => u.is_active).map(u => `<option value="${u.id}" ${u.id===sel?"selected":""}>${esc(u.name)}</option>`).join("");
   m.innerHTML = `
     <div class="view-head"><div><h2>Настройки</h2><p>Маршрут согласования, статьи расходов и доступ сотрудников.</p></div></div>
@@ -915,7 +1017,7 @@ async function renderAdmin(m){
         Лишних отметьте галочкой слева и нажмите «Удалить выбранных». Тех, у кого уже есть заявки, удалить нельзя, только отключить: иначе пропадёт история платежей.</p>
         <div class="toolbar" style="margin:10px 0"><input class="inp" id="u_q" type="search" placeholder="Поиск по имени или email"><button class="btn bad" id="u_del" disabled>Удалить выбранных</button><span class="t-sub" id="u_cnt">Активных: ${active.length}</span></div>
         <div style="overflow-x:auto"><table class="users-tbl"><thead><tr><th><input type="checkbox" id="u_all" aria-label="Выбрать всех"></th><th>Имя</th><th>Email для входа</th><th>Админ</th><th>Пароль</th><th>Временный пароль</th><th>Был(а)</th><th></th></tr></thead><tbody>
-          <tr data-u="new"><td></td><td><input class="inp" data-f="name" placeholder="Имя Фамилия"></td><td><input class="inp" data-f="login" type="email" placeholder="email"></td><td style="text-align:center"><input type="checkbox" data-f="is_admin"></td><td></td><td></td><td></td><td><button class="btn primary" data-usave="new">Добавить</button></td></tr>
+          <tr data-u="new" class="u-new"><td class="u-empty"></td><td data-label="Новый сотрудник: имя"><input class="inp" data-f="name" placeholder="Имя Фамилия"></td><td data-label="Email для входа"><input class="inp" data-f="login" type="email" placeholder="email"></td><td data-label="Администратор" class="u-adm"><input type="checkbox" data-f="is_admin"></td><td class="u-empty"></td><td class="u-empty"></td><td class="u-empty"></td><td class="u-act"><button class="btn primary" data-usave="new">Добавить</button></td></tr>
           ${active.map(userRow).join("")}
         </tbody></table></div>
         ${inactive.length ? `<details style="margin-top:14px"><summary class="t-sub" style="cursor:pointer">Отключённые: ${inactive.length}</summary>
